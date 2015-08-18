@@ -1,16 +1,16 @@
 # Myproxy
-a sample http proxy write in golang
+a sample http proxy write in golang.
 
-support http/https proxy and also act as a normal http server
+support http/https proxy and also act as a normal http server.
 
 
 ##Usage
 
-Use myproxy.Handler as a normal http.Handler
+Use myproxy.Handler as a normal http.Handler.
 
-myproxy.Handler detect the local request and invoke the http.DefaultServeMux
+myproxy.Handler will automatically detects the local request and proxy request, it handles the proxy request itself and invoke the http.DefaultServeMux to handle local path request.
 
-you can use the `http.Handle` or `http.HandleFunc` to register the local path handler
+you can use the `http.Handle` or `http.HandleFunc` to register the local path request handler.
 
 ##Example
 ```go
@@ -54,5 +54,5 @@ proxy request
 curl --proxy http://127.0.0.1:8080/ http://httpbin.org/ip
 ```
 
-see more examples on `samples/` directory
+see more examples on `samples/` directory.
 
