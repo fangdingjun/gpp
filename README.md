@@ -1,2 +1,58 @@
-# myproxy
+# Myproxy
 a sample http proxy write in golang
+
+support http/https proxy and also act as a normal http server
+
+
+##Usage
+
+Use myproxy.Handler as a normal http.Handler
+
+myproxy.Handler detect the local request and invoke the http.DefaultServeMux
+
+you can use the `http.Handle` or `http.HandleFunc` to register the local path handler
+
+##Example
+```go
+package main
+
+import (
+	. "fmt"
+	"github.com/fangdingjun/myproxy"
+	"log"
+	"net/http"
+)
+
+func main() {
+	port := 8080
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte("<h1>welcome!</h1>"))
+	})
+
+	log.Print("Listen on: ", Sprintf("0.0.0.0:%d", port))
+	err := http.ListenAndServe(Sprintf(":%d", port), &myproxy.Handler{})
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+```
+
+run this example
+
+you can use `curl` to test server and proxy server function
+
+local path request
+```bash
+curl http://127.0.0.1:8080/
+```
+
+proxy request
+```bash
+curl --proxy http://127.0.0.1:8080/ http://httpbin.org/ip
+```
+
+see more examples on `samples/` directory
+
