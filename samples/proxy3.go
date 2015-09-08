@@ -2,7 +2,7 @@ package main
 
 import (
 	. "fmt"
-	"github.com/fangdingjun/myproxy"
+	"github.com/fangdingjun/gpp"
 	"log"
 	"net/http"
 )
@@ -23,7 +23,7 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir(".")))
 
 	log.Print("Listen on: ", Sprintf("0.0.0.0:%d", port))
-	err := http.ListenAndServe(Sprintf(":%d", port), &myproxy.Handler{})
+	err := http.ListenAndServe(Sprintf(":%d", port), &gpp.Handler{})
 	if err != nil {
 		log.Fatal(err)
 	}

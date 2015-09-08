@@ -4,6 +4,7 @@ import (
 	. "fmt"
 	"github.com/fangdingjun/gpp"
 	"github.com/gorilla/mux"
+    "github.com/fangdingjun/http2"
 	"log"
 	"net/http"
 )
@@ -19,16 +20,25 @@ func welcome(w http.ResponseWriter, r *http.Request) {
 func main() {
 	port := 8080
 
+    var srv http.Server
+    
 	router := mux.NewRouter()
 
 	router.HandleFunc("/hello", hello)
 	router.HandleFunc("/welcome", welcome)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir(".")))
 
-	http.Handle("/", router)
+	    
+    srv.Addr=Sprintf(":%d", port)
+    
+    /* set the http handler */
+    srv.Handler = &gpp.Handler{EnableProxy: true, Handler: router}
+    
+    /* initial http2 support */
+    http2.ConfigureServer(&srv, nil)
 
-	log.Print("Listen on: ", Sprintf("0.0.0.0:%d", port))
-	err := http.ListenAndServe(Sprintf(":%d", port), &gpp.Handler{})
+	log.Print("Listen on: ", Sprintf("https://0.0.0.0:%d", port))
+	srv.ListenAndServeTLS("server.crt", "server.key")
 	if err != nil {
 		log.Fatal(err)
 	}
