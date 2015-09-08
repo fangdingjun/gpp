@@ -1,4 +1,4 @@
-package myproxy
+package gpp
 
 import (
 	"io"
@@ -6,15 +6,58 @@ import (
 	"net"
 	"net/http"
 	"strings"
+    "github.com/fangdingjun/gpp/util"
+    . "fmt"
 )
 
-type Handler struct{}
+type Handler struct{
+    Handler http.Handler
+    EnableProxy bool
+    LocalDomain string
+    Transport http.RoundTripper
+    Logger *log.Logger
+}
+
+func (h *Handler) Log(r *http.Request, status int){
+    if h.Logger != nil {
+        ua := r.Header.Get("user-agent")
+        if ua == "" {
+            ua = "-"
+        }
+        uri := r.RequestURI
+        if r.ProtoMajor == 2 {
+            uri = r.URL.String()
+        }
+        ip := strings.Split(r.RemoteAddr, ":")[0]
+        h.Logger.Printf("%s \"%s %s %s\" %03d \"%s\" ",
+            ip, r.Method, uri, r.Proto, status, ua,
+        )
+    }
+}
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.RequestURI[0] == '/' {
+    if b :=h.is_local_request(r); b {
+        h.Log(r, 0)
+        if h.Handler != nil {
+            /* invoke handler */
+            h.Handler.ServeHTTP(w, r)
+            return
+        }
+
+        /* invoke default handler */
 		http.DefaultServeMux.ServeHTTP(w, r)
 		return
 	}
+
+    if ! h.EnableProxy {
+        /* proxy not enabled */
+        w.WriteHeader(404)
+        w.Write([]byte("<h1>Not Found</h1>"))
+        h.Log(r, 404)
+        return
+    }
+
+    /* proxy */
 
 	if r.Method == "CONNECT" {
 		h.HandleConnect(w, r)
@@ -29,6 +72,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		log.Print("connection not support hijack")
 		w.WriteHeader(503)
+        h.Log(r, 503)
 		return
 	}
 
@@ -36,31 +80,58 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(503)
+        h.Log(r, 503)
 		return
 	}
 
-	server_conn, err := net.Dial("tcp", r.RequestURI)
+    srv := r.RequestURI
+    if r.ProtoMajor == 2 {
+        /* http/2.0 */
+        srv = r.URL.Host
+    }
+
+    if strings.Index(srv, ":") == -1 {
+        srv = Sprintf("%s:443", srv)
+    }
+
+	server_conn, err := util.Dial("tcp", srv)
 	if err != nil {
 		log.Print("dial to server: ", err)
-		client_conn.Write([]byte("HTTP/1.1 503 Service Unaviable\r\n\r\n"))
+        w.WriteHeader(503)
+        client_conn.Close()
+        h.Log(r, 503)
 		return
 	}
 
-	client_conn.Write([]byte("HTTP/1.1 200 ok\r\n\r\n"))
-
+    w.WriteHeader(200)
+    h.Log(r, 200)
 	go pipe(server_conn, client_conn)
-	go pipe(client_conn, server_conn)
+	pipe(client_conn, server_conn)
 }
 
 func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
-	r.RequestURI = ""
+    var resp *http.Response
+    var err error
 
+    /* delete proxy-connection header */
 	r.Header.Del("proxy-connection")
 
-	resp, err := http.DefaultTransport.RoundTrip(r)
+    /* set URL.Scheme for http/2.0 */
+    if r.ProtoMajor == 2 {
+        r.URL.Scheme = "http"
+    }
+
+    if h.Transport != nil {
+        /* invoke user defined transport */
+        resp, err = h.Transport.RoundTrip(r)
+    }else{
+        /* invoke default transport */
+        resp, err = http.DefaultTransport.RoundTrip(r)
+    }
 	if err != nil {
 		log.Print("proxy err: ", err)
 		w.WriteHeader(503)
+        h.Log(r, 503)
 		return
 	}
 
@@ -69,13 +140,33 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(resp.StatusCode)
-
+    h.Log(r, resp.StatusCode)
 	io.Copy(w, resp.Body)
 
 	resp.Body.Close()
+}
+
+func (h *Handler ) is_local_request(r *http.Request) bool{
+    /* http/1.x */
+    if r.ProtoMajor == 1 {
+        if r.RequestURI[0] == '/' {
+            return true
+        }
+    }
+
+    /* http/2.x */
+    if r.ProtoMajor == 2 {
+        if h.LocalDomain != "" &&
+            strings.HasSuffix(r.Host, h.LocalDomain){
+            return true
+        }
+    }
+
+    return false
 }
 
 func pipe(dst, src net.Conn) {
 	io.Copy(dst, src)
 	dst.Close()
 }
+
