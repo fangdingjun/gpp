@@ -30,10 +30,10 @@ func init_routers() {
 		})
 
 	Router.PathPrefix("/").HandlerFunc(proxy.ProxyPass)
-    
-    /* defaut router */
-    http.HandleFunc("/", proxy.ProxyPass)
-    http.Handle("/static",
-        http.StripPrefix("/static", http.FileServer(http.Dir(docroot))))
+
+	/* defaut router */
+	http.HandleFunc("/", proxy.ProxyPass)
+	http.Handle("/static",
+		http.StripPrefix("/static", http.FileServer(http.Dir(docroot))))
 
 }
