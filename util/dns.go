@@ -6,8 +6,13 @@ import (
 	"net"
 )
 
-var DnsServer string
-var DefaultDnsServer = "8.8.8.8:53"
+var (
+	/* dns server to use */
+	DnsServer string
+
+	/* default dns server */
+	DefaultDnsServer = "8.8.8.8:53"
+)
 
 func get_dns_server() string {
 	if DnsServer != "" {
@@ -17,6 +22,16 @@ func get_dns_server() string {
 	return DefaultDnsServer
 }
 
+/*
+Return all the ipv6 and ipv4 address for the domain name.
+
+In the return list, ipv6 address is in front of ipv4 address.
+
+if domain name resolve failed it will return an error.
+
+Instead of system dns utils, we use the pure go dns library from https://github.com/miekg/dns
+
+*/
 func ResolveDns(d string) ([]net.IP, error) {
 	var data []net.IP
 	res, err := ResolveAAAA(d)
@@ -33,6 +48,14 @@ func ResolveDns(d string) ([]net.IP, error) {
 	return data, nil
 }
 
+/*
+Return all the ipv4 address for the domain name.
+
+If domain name resolve failed or get an emppty ip list will return an error.
+
+Instead of system dns utils, we use the pure go dns library from https://github.com/miekg/dns
+
+*/
 func ResolveA(d string) ([]net.IP, error) {
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(d), dns.TypeA)
@@ -53,6 +76,14 @@ func ResolveA(d string) ([]net.IP, error) {
 	return res, nil
 }
 
+/*
+Return all the ipv6 address for the domain name.
+
+If domain name resolve failed or get an emppty ip list will return an error.
+
+Instead of system dns utils, we use the pure go dns library from https://github.com/miekg/dns
+
+*/
 func ResolveAAAA(d string) ([]net.IP, error) {
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(d), dns.TypeAAAA)

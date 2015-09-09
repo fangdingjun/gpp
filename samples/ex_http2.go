@@ -1,3 +1,6 @@
+/*
+a example to support http2
+*/
 package main
 
 import (

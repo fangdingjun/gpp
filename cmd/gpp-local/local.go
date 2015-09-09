@@ -1,3 +1,14 @@
+/*
+gpp-local is application to convert the https proxy(http proxy over TLS) to a normal http proxy.
+
+Usage
+
+generate a configure file and edit it
+    $ gpp-local -dumpflags > client.ini
+
+run it
+    $ gpp-local -config client.ini
+*/
 package main
 
 import (

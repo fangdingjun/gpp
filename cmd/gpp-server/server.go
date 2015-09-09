@@ -1,3 +1,20 @@
+/*
+gpp-server is a server application support proxy, file serve  and https, http2.
+
+Usage
+
+use this command to generate a configure file and edit it
+    $ gpp-server -dumpflags > server.ini
+
+
+run it with
+    $ gpp-server -config server.ini
+
+use this command to show help message
+    $ gpp-server -h
+
+http2 is not enabled if you do not provide the tls certificate and private key file.
+*/
 package main
 
 import (

@@ -1,3 +1,48 @@
+/*
+gpp is a http proxy handler, it can act as a proxy server and a http server.
+
+Use it as a normal http.Handler. it determines the proxy request and the local request automatically.
+
+It handle the proxy request itself, and route the local request to http.DefaultServerMux.
+
+you can set its Handler options to yourself handler.
+
+you can set EnableProxy to false to disable proxy function.
+
+Example
+
+a proxy example
+    package main
+
+    import (
+        . "fmt"
+        "github.com/fangdingjun/gpp"
+        "log"
+        "net/http"
+    )
+
+    func main() {
+        port := 8080
+
+        http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(200)
+            w.Write([]byte("<h1>welcome!</h1>"))
+        })
+
+        log.Print("Listen on: ", Sprintf("0.0.0.0:%d", port))
+        err := http.ListenAndServe(Sprintf(":%d", port), &gpp.Handler{EnableProxy:true})
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
+Run above example and use curl to test it.
+
+Run the follow command you will see a welcome message
+    $ curl http://127.0.0.1:8080/
+Run the follow command to test proxy function
+    $ curl --proxy 127.0.0.1:8080 http://httpbin.org/ip
+
+*/
 package gpp
 
 import (
@@ -10,15 +55,36 @@ import (
 	"strings"
 )
 
+/*
+This is proxy handler, you can use this as a http.Handler.
+*/
 type Handler struct {
-	Handler     http.Handler
+	// the handler to process local path request
+	Handler http.Handler
+
+	// enable proxy or not
 	EnableProxy bool
+
+	// the local domain name, only required when http2 enabled
 	LocalDomain string
-	Transport   http.RoundTripper
-	Logger      *log.Logger
+
+	// the RoundTripper for http proxy
+	Transport http.RoundTripper
+
+	// log instance
+	Logger *log.Logger
 }
 
-/* log request */
+/*
+Log the http request, if the h.Logger is nil, this function does nothing.
+
+r is the client request
+
+status is a http status code reply to client.
+
+The log format look like this
+    2015/09/09 15:21:41 59.44.39.234 "GET /proxy.pac HTTP/1.1" 200 "Mozilla/5.0 (compatible; MSIE 10.0; Win32; Trident/6.0)"
+*/
 func (h *Handler) LogReq(r *http.Request, status int) {
 	if h.Logger != nil {
 		ua := r.Header.Get("user-agent")
@@ -44,13 +110,26 @@ func (h *Handler) LogReq(r *http.Request, status int) {
 	}
 }
 
-/* log */
+/*
+This is a shortcut for log.Printf, if h.Logger is nil this does nothing.
+*/
 func (h *Handler) Log(format string, args ...interface{}) {
 	if h.Logger != nil {
 		h.Logger.Printf(format, args...)
 	}
 }
 
+/*
+Impelemnt the http.Handler inferface.
+
+It determimes the proxy request and the local page request automitically.
+
+If the h.EnableProxy is false, all proxy requests will be denied.
+
+If the h.Handler is nil, the local page request will be routed to http.DefaultServerMux.
+
+If the h.Handler is not nil, will use h.Handler to handle the request.
+*/
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if b := h.is_local_request(r); b {
 		h.LogReq(r, 0)
@@ -83,6 +162,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.HandleHTTP(w, r)
 }
 
+/*
+handle the CONNECT request
+*/
 func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
@@ -132,6 +214,12 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	pipe(client_conn, server_conn)
 }
 
+/*
+Handle the other http proxy request, like GET, POST, HEAD.
+
+If h.Transport is nil, will use http.DefaultTransport to process the request.
+
+*/
 func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	var resp *http.Response
 	var err error

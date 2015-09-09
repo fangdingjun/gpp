@@ -5,8 +5,13 @@ import (
 	"time"
 )
 
-var DialTimeout time.Duration = 0
-var DefaultDialTimeout time.Duration = 300 * time.Millisecond
+var (
+	/* dial timeout */
+	DialTimeout time.Duration = 0
+
+	/* default timeout, 300ms */
+	DefaultDialTimeout time.Duration = 300 * time.Millisecond
+)
 
 func get_timeout() time.Duration {
 	if DialTimeout != 0 {
@@ -15,6 +20,16 @@ func get_timeout() time.Duration {
 	return DefaultDialTimeout
 }
 
+/*
+Try to dial all the ip address one by one if addr is a domain name, util one is successed.
+
+
+
+It tries to dail to ipv6 first, and then dial to ipv4 until one is successed
+
+If  dial to all ip failed, it return a error.
+
+*/
 func Dial(network string, addr string) (net.Conn, error) {
 	var ip net.IP
 	var err error

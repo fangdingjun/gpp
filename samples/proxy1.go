@@ -1,3 +1,6 @@
+/*
+example to use gpp.Handler
+*/
 package main
 
 import (
