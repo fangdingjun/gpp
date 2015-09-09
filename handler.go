@@ -18,23 +18,33 @@ type Handler struct {
 	Logger      *log.Logger
 }
 
+/* log request */
 func (h *Handler) LogReq(r *http.Request, status int) {
 	if h.Logger != nil {
 		ua := r.Header.Get("user-agent")
 		if ua == "" {
 			ua = "-"
 		}
+
 		uri := r.RequestURI
+
 		if r.ProtoMajor == 2 {
 			uri = r.URL.String()
 		}
+
+		if r.Method == "CONNECT" {
+			uri = r.URL.Host
+		}
+
 		ip := strings.Split(r.RemoteAddr, ":")[0]
+
 		h.Logger.Printf("%s \"%s %s %s\" %03d \"%s\" ",
 			ip, r.Method, uri, r.Proto, status, ua,
 		)
 	}
 }
 
+/* log */
 func (h *Handler) Log(format string, args ...interface{}) {
 	if h.Logger != nil {
 		h.Logger.Printf(format, args...)
@@ -97,6 +107,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.Index(srv, ":") == -1 {
+		/* no port specialed, set port to 443 */
 		srv = Sprintf("%s:443", srv)
 	}
 
@@ -108,12 +119,15 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		h.LogReq(r, 503)
 		return
 	}
+
 	if r.ProtoMajor == 2 {
 		w.WriteHeader(200)
 	} else {
 		client_conn.Write([]byte("HTTP/1.1 200 ok\r\n\r\n"))
 	}
+
 	h.LogReq(r, 200)
+
 	go pipe(server_conn, client_conn)
 	pipe(client_conn, server_conn)
 }
@@ -125,7 +139,7 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	/* delete proxy-connection header */
 	r.Header.Del("proxy-connection")
 
-	/* set URL.Scheme for http/2.0 */
+	/* set URL.Scheme, URL.Host for http/2.0 */
 	if r.ProtoMajor == 2 {
 		r.URL.Scheme = "http"
 		r.URL.Host = r.Host
@@ -138,6 +152,7 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		/* invoke default transport */
 		resp, err = http.DefaultTransport.RoundTrip(r)
 	}
+
 	if err != nil {
 		h.Log("proxy err: %s\n", err.Error())
 		w.WriteHeader(503)
@@ -150,7 +165,9 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(resp.StatusCode)
+
 	h.LogReq(r, resp.StatusCode)
+
 	io.Copy(w, resp.Body)
 
 	resp.Body.Close()
@@ -166,8 +183,12 @@ func (h *Handler) is_local_request(r *http.Request) bool {
 
 	/* http/2.x */
 	if r.ProtoMajor == 2 {
+		host := r.Host
+		if strings.Index(r.Host, ":") != -1 {
+			host, _, _ = net.SplitHostPort(r.Host)
+		}
 		if h.LocalDomain != "" &&
-			strings.HasSuffix(r.Host, h.LocalDomain) {
+			strings.HasSuffix(host, h.LocalDomain) {
 			return true
 		}
 	}
@@ -175,6 +196,7 @@ func (h *Handler) is_local_request(r *http.Request) bool {
 	return false
 }
 
+/* copy and close */
 func pipe(dst, src net.Conn) {
 	io.Copy(dst, src)
 	dst.Close()
