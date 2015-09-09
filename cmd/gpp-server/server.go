@@ -5,7 +5,6 @@ import (
 	"flag"
 	. "fmt"
 	"github.com/fangdingjun/gpp"
-	//"github.com/fangdingjun/gpp/cmd/setuid"
 	"github.com/fangdingjun/http2"
 	"github.com/gorilla/mux"
 	"github.com/vharitonsky/iniflags"
@@ -24,7 +23,6 @@ func main() {
 	var cert string
 	var key string
 	var logfile string
-	var run_user string
 	var port1 int
 	var local_domain string
 	var logger *log.Logger
@@ -41,7 +39,6 @@ func main() {
 	flag.StringVar(&key, "key", "", "the private key")
 	flag.StringVar(&docroot, "docroot", ".", "the www root directory")
 	flag.StringVar(&logfile, "logfile", "", "log file")
-	flag.StringVar(&run_user, "user", "", "run as user")
 	flag.StringVar(&local_domain, "domain", "", "local domain name")
 	iniflags.Parse()
 
@@ -59,7 +56,7 @@ func main() {
 			out = out1
 		}
 	}
-    log.SetOutput(out)
+	log.SetOutput(out)
 	logger = log.New(out, "", log.LstdFlags)
 
 	srv.Handler = &gpp.Handler{
