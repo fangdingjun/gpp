@@ -196,7 +196,11 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	server_conn, err := util.Dial("tcp", srv)
 	if err != nil {
 		h.Log("dial to server: %s\n", err.Error())
-		w.WriteHeader(503)
+		if r.ProtoMajor == 2 {
+			w.WriteHeader(503)
+		} else {
+			client_conn.Write([]byte("HTTP/1.1 503 service unaviable\r\n\r\n"))
+		}
 		client_conn.Close()
 		h.LogReq(r, 503)
 		return
