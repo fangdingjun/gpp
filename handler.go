@@ -46,7 +46,6 @@ Run the follow command to test proxy function
 package gpp
 
 import (
-	. "fmt"
 	"github.com/fangdingjun/gpp/util"
 	"io"
 	"log"
