@@ -174,14 +174,6 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client_conn, _, err := hj.Hijack()
-	if err != nil {
-		h.Log("%s\n", err.Error())
-		w.WriteHeader(503)
-		h.LogReq(r, 503)
-		return
-	}
-
 	srv := r.RequestURI
 	if r.ProtoMajor == 2 {
 		/* http/2.0 */
@@ -190,29 +182,25 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 	if strings.Index(srv, ":") == -1 {
 		/* no port specialed, set port to 443 */
-		srv = Sprintf("%s:443", srv)
+		srv = net.JoinHostPort(srv, "443")
 	}
 
 	server_conn, err := util.Dial("tcp", srv)
 	if err != nil {
 		h.Log("dial to server: %s\n", err.Error())
-		if r.ProtoMajor == 2 {
-			w.WriteHeader(503)
-		} else {
-			client_conn.Write([]byte("HTTP/1.1 503 service unaviable\r\n\r\n"))
-		}
-		client_conn.Close()
+
+		w.WriteHeader(503)
+
+		w.Write([]byte(err.Error()))
+
 		h.LogReq(r, 503)
 		return
 	}
 
-	if r.ProtoMajor == 2 {
-		w.WriteHeader(200)
-	} else {
-		client_conn.Write([]byte("HTTP/1.1 200 ok\r\n\r\n"))
-	}
-
+	w.WriteHeader(200)
 	h.LogReq(r, 200)
+
+	client_conn, _, err := hj.Hijack()
 
 	go pipe(server_conn, client_conn)
 	pipe(client_conn, server_conn)
