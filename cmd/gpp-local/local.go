@@ -65,25 +65,24 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(503)
 		return
 	}
+
+	s, err := createconn()
+	if err != nil {
+		log.Print(err)
+		w.WriteHeader(503)
+		return
+	}
+
 	c, rw, err := hj.Hijack()
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(503)
 		return
 	}
-	s, err := createconn()
-	if err != nil {
-		log.Print(err)
-		rw.WriteString("HTTP/1.1 503 service unaviable\r\n")
-		rw.WriteString("Connection: close\r\n")
-		rw.WriteString("\r\n")
-		rw.Flush()
-		c.Close()
-		return
-	}
+
 	r.WriteProxy(s)
 	go forward(c, s)
-	go forward(s, c)
+	forward(s, c)
 }
 
 func (mhd *myhandler) HandleHttp(w http.ResponseWriter, r *http.Request) {
