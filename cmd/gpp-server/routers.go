@@ -2,38 +2,38 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
-func init_routers() {
-	proxy := NewProxy("127.0.0.1:9090")
-	Router.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
-		http.FileServer(http.Dir(docroot))))
+var proxy = NewProxy("127.0.0.1:9090")
 
-	Router.HandleFunc("/proxy.pac",
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/javascript")
-			w.WriteHeader(200)
-			w.Write([]byte(`function FindProxyForUrl(url, host){
-    return "PRXOY 127.0.0.1:8080";
+func roothandler(w http.ResponseWriter, r *http.Request) {
+	fullpath := filepath.Join(docroot, r.URL.Path)
+
+	/* local file not exists */
+	if _, err := os.Stat(fullpath); err != nil {
+		proxy.ProxyPass(w, r)
+		return
+	}
+
+	/* file out of docroot, path may contains .. */
+	if b := strings.HasPrefix(filepath.Clean(fullpath),
+		filepath.Clean(docroot)); !b {
+		w.WriteHeader(404)
+		w.Write([]byte("<h1>Not Found</h1>"))
+		return
+	}
+
+	/* serve local file */
+	http.ServeFile(w, r, fullpath)
 }
-`))
-		})
 
-	Router.HandleFunc("/add_route.bat",
-		func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "/home/dingjun/html/add_route.bat")
-		})
+func init_routers() {
 
-	Router.HandleFunc("/del_route.bat",
-		func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "/home/dingjun/html/del_route.bat")
-		})
-
-	Router.PathPrefix("/").HandlerFunc(proxy.ProxyPass)
+	Router.PathPrefix("/").HandlerFunc(roothandler)
 
 	/* defaut router */
-	http.HandleFunc("/", proxy.ProxyPass)
-	http.Handle("/static",
-		http.StripPrefix("/static", http.FileServer(http.Dir(docroot))))
-
+	http.HandleFunc("/", roothandler)
 }
