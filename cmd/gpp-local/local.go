@@ -73,7 +73,7 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, rw, err := hj.Hijack()
+	c, _, err := hj.Hijack()
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(503)
