@@ -21,7 +21,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
+	//"strings"
 	"time"
 )
 
@@ -92,9 +92,12 @@ func (mhd *myhandler) HandleHttp(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(503)
 		return
 	}
+
 	header := w.Header()
 	for k, v := range resp.Header {
-		header.Set(k, strings.Join(v, ","))
+		for _, v1 := range v {
+			header.Add(k, v1)
+		}
 	}
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
