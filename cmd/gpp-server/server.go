@@ -47,7 +47,7 @@ func main() {
 	var listener, listener1 net.Listener
 	var err error
 
-	//http2.VerboseLogs = true
+	http2.VerboseLogs = false
 	var srv, srv1 http.Server
 
 	flag.IntVar(&port, "port", 8000, "the listening port")

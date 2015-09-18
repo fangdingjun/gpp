@@ -239,8 +239,14 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hdr := w.Header()
 	for k, v := range resp.Header {
-		w.Header().Set(k, strings.Join(v, ","))
+		//h.Log("header: %s = %s\n", k, v)
+		if strings.ToLower(k) != "connection" {
+			for _, v1 := range v {
+				hdr.Add(k, v1)
+			}
+		}
 	}
 
 	w.WriteHeader(resp.StatusCode)
