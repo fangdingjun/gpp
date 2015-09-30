@@ -34,7 +34,8 @@ func (p *Proxy) Dial(network string, addr string) (conn net.Conn, err error) {
 }
 
 func (p *Proxy) ProxyPass(w http.ResponseWriter, r *http.Request) {
-	r.Header.Add("X-Forwarded-For", strings.Split(r.RemoteAddr, ":")[0])
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	r.Header.Add("X-Forwarded-For", host)
 	r.RequestURI = ""
 	r.URL.Scheme = "http"
 	r.URL.Host = r.Host
