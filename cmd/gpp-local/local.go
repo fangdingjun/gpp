@@ -21,7 +21,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
+	//"strings"
 	"time"
 )
 
@@ -65,25 +65,24 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(503)
 		return
 	}
-	c, rw, err := hj.Hijack()
+
+	s, err := createconn()
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(503)
 		return
 	}
-	s, err := createconn()
+
+	c, _, err := hj.Hijack()
 	if err != nil {
 		log.Print(err)
-		rw.WriteString("HTTP/1.1 503 service unaviable\r\n")
-		rw.WriteString("Connection: close\r\n")
-		rw.WriteString("\r\n")
-		rw.Flush()
-		c.Close()
+		w.WriteHeader(503)
 		return
 	}
+
 	r.WriteProxy(s)
 	go forward(c, s)
-	go forward(s, c)
+	forward(s, c)
 }
 
 func (mhd *myhandler) HandleHttp(w http.ResponseWriter, r *http.Request) {
@@ -93,9 +92,12 @@ func (mhd *myhandler) HandleHttp(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(503)
 		return
 	}
+
 	header := w.Header()
 	for k, v := range resp.Header {
-		header.Set(k, strings.Join(v, ","))
+		for _, v1 := range v {
+			header.Add(k, v1)
+		}
 	}
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
