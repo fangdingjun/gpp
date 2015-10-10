@@ -6,7 +6,7 @@ import (
 	//"bufio"
 	"io"
 	"log"
-	"strings"
+	//"strings"
 )
 
 type Proxy struct {
@@ -49,7 +49,9 @@ func (p *Proxy) ProxyPass(w http.ResponseWriter, r *http.Request) {
 	}
 	header := w.Header()
 	for k, v := range resp.Header {
-		header.Set(k, strings.Join(v, ","))
+		for _, v1 := range v {
+			header.Add(k, v1)
+		}
 	}
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
