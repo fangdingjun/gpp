@@ -10,7 +10,11 @@ import (
 var proxy = NewProxy("127.0.0.1:9090")
 
 func roothandler(w http.ResponseWriter, r *http.Request) {
-	fullpath := filepath.Join(docroot, r.URL.Path)
+	fullpath := filepath.Clean(filepath.Join(docroot, r.URL.Path))
+	fullpath, _ = filepath.Abs(fullpath)
+
+	root, _ := filepath.Abs(docroot)
+	root = filepath.Clean(root)
 
 	/* local file not exists */
 	if _, err := os.Stat(fullpath); err != nil {
@@ -19,8 +23,7 @@ func roothandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/* file out of docroot, path may contains .. */
-	if b := strings.HasPrefix(filepath.Clean(fullpath),
-		filepath.Clean(docroot)); !b {
+	if b := strings.HasPrefix(fullpath, root); !b {
 		w.WriteHeader(404)
 		w.Write([]byte("<h1>Not Found</h1>"))
 		return
