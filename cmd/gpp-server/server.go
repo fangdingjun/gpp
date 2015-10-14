@@ -83,7 +83,10 @@ func main() {
 		Logger:      logger,
 	}
 
-	srv1.Handler = &gpp.Handler{EnableProxy: false}
+	srv1.Handler = &gpp.Handler{
+		EnableProxy: false,
+		Logger:      logger,
+	}
 
 	if cert != "" && key != "" {
 		ssl_cert, err = tls.LoadX509KeyPair(cert, key)
