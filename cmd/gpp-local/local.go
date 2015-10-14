@@ -22,36 +22,64 @@ import (
 	"net/http"
 	"net/url"
 	//"strings"
-	"time"
+	"github.com/fangdingjun/gpp/util"
+	//"time"
 )
 
 var server_name string
 var port int = 0
 
-type myhandler struct{}
-
-var dialer *net.Dialer = &net.Dialer{
-	Timeout:   time.Second * 10,
-	KeepAlive: time.Second * 10,
+type myhandler struct {
+	proxy *proxy
 }
-var i = 0
 
-func createconn() (c net.Conn, err error) {
-	//u, _ := url.Parse(proxy)
+type proxy struct {
+	handler http.RoundTripper
+	index   int
+}
+
+func (p *proxy) do(r *http.Request) (*http.Response, error) {
+	return p.handler.RoundTrip(r)
+}
+
+func (p *proxy) connect(r *http.Request) (net.Conn, error) {
 	if len(hosts) > 1 {
-		j := i % len(hosts)
-		return dial("tcp", hosts[j])
+		j := p.index % len(hosts)
+		p.index += 1
+		return p.dial("tcp", hosts[j])
 	}
-	return dial("tcp", hosts[0])
+	return p.dial("tcp", hosts[0])
 }
 
-func dial(network string, addr string) (c net.Conn, err error) {
+func (p *proxy) dial(network string, addr string) (net.Conn, error) {
+	name := addr
 	if server_name != "" {
-		return tls.DialWithDialer(dialer, network, addr, &tls.Config{
-			ServerName: server_name,
-		})
+		name = server_name
 	}
-	return tls.DialWithDialer(dialer, network, addr, nil)
+	c, err := util.Dial(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	cc := tls.Client(c, &tls.Config{ServerName: name})
+	return cc, nil
+}
+
+func (p *proxy) getproxy(req *http.Request) (*url.URL, error) {
+	var u *url.URL
+	if len(hosts) > 1 {
+		j := p.index % len(hosts)
+		p.index += 1
+		u = &url.URL{
+			Scheme: "http",
+			Host:   hosts[j],
+		}
+	} else {
+		u = &url.URL{
+			Scheme: "http",
+			Host:   hosts[0],
+		}
+	}
+	return u, nil
 }
 
 func forward(src, dst net.Conn) {
@@ -66,7 +94,7 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s, err := createconn()
+	s, err := mhd.proxy.connect(r)
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(503)
@@ -86,7 +114,7 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (mhd *myhandler) HandleHttp(w http.ResponseWriter, r *http.Request) {
-	resp, err := DefaultTr.RoundTrip(r)
+	resp, err := mhd.proxy.do(r)
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(503)
@@ -110,28 +138,6 @@ func (mhd *myhandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mhd.HandleHttp(w, r)
-}
-
-func getproxy(req *http.Request) (*url.URL, error) {
-	var u *url.URL
-	if len(hosts) > 1 {
-		j := i % len(hosts)
-		u = &url.URL{
-			Scheme: "http",
-			Host:   hosts[j],
-		}
-	} else {
-		u = &url.URL{
-			Scheme: "http",
-			Host:   hosts[0],
-		}
-	}
-	return u, nil
-}
-
-var DefaultTr http.RoundTripper = &http.Transport{
-	Proxy: getproxy,
-	Dial:  dial,
 }
 
 type myargs []string
@@ -159,7 +165,13 @@ func main() {
 	}
 
 	log.Printf("Listening on :%d", port)
-	err := http.ListenAndServe(Sprintf(":%d", port), &myhandler{})
+	p := &proxy{}
+	p.handler = &http.Transport{
+		Dial:  p.dial,
+		Proxy: p.getproxy,
+	}
+
+	err := http.ListenAndServe(Sprintf(":%d", port), &myhandler{proxy: p})
 	if err != nil {
 		log.Fatal(err)
 	}
