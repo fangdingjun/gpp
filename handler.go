@@ -115,7 +115,7 @@ func (h *Handler) LogReq(r *http.Request, status int) {
 
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 
-		h.Logger.Printf("%s \"%s %s %s\" %03d \"%s\" ",
+		h.Logger.Printf("%s \"%s %s %s\" %03d \"%s\"\n",
 			ip, r.Method, uri, r.Proto, status, ua,
 		)
 	}

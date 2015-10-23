@@ -94,7 +94,10 @@ func main() {
 	}
 
 	srv1.Addr = Sprintf(":%d", port1)
-	srv1.Handler = &gpp.Handler{EnableProxy: false}
+	srv1.Handler = &gpp.Handler{
+		EnableProxy: false,
+		Logger:      logger,
+	}
 
 	if port1 != 0 {
 		go func() {
