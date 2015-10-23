@@ -72,6 +72,18 @@ type Handler struct {
 
 	// log instance
 	Logger *log.Logger
+
+	// proxy require auth
+	ProxyAuth bool
+
+	/*
+	   if ProxyAuth is true, ProxyAuthFunc used to check the user authorization,
+	   return true if success, false if failed,
+
+	   when failed, the response must be replyed to the client before the
+	   function ProxyAuthFunc return
+	*/
+	ProxyAuthFunc func(w http.ResponseWriter, r *http.Request) bool
 }
 
 /*
@@ -152,6 +164,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/* proxy */
+
+	if h.ProxyAuth {
+		if h.ProxyAuthFunc == nil {
+			panic("ProxyAuth is true but ProxyAuthFunc is nil")
+		}
+
+		if !h.ProxyAuthFunc(w, r) {
+			return
+		}
+	}
 
 	if r.Method == "CONNECT" {
 		h.HandleConnect(w, r)
