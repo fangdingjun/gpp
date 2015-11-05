@@ -221,10 +221,15 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	h.LogReq(r, 200)
 
-	client_conn, _, err := hj.Hijack()
+	client_conn, _, _ := hj.Hijack()
 
-	go pipe(server_conn, client_conn)
-	pipe(client_conn, server_conn)
+	go func() {
+		io.Copy(server_conn, client_conn)
+		server_conn.Close()
+	}()
+
+	io.Copy(client_conn, server_conn)
+	client_conn.Close()
 }
 
 /*
@@ -244,6 +249,11 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.ProtoMajor == 2 {
 		r.URL.Scheme = "http"
 		r.URL.Host = r.Host
+	}
+
+	if r.Method != "POST" && r.Method != "PUT" {
+		r.ContentLength = 0
+		r.Body = nil
 	}
 
 	if h.Transport != nil {
@@ -301,10 +311,4 @@ func (h *Handler) is_local_request(r *http.Request) bool {
 	}
 
 	return false
-}
-
-/* copy and close */
-func pipe(dst, src net.Conn) {
-	io.Copy(dst, src)
-	dst.Close()
 }

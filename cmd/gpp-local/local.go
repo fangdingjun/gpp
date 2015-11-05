@@ -13,8 +13,10 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	. "fmt"
+	"github.com/fangdingjun/net/http2"
 	"github.com/vharitonsky/iniflags"
 	"io"
 	"log"
@@ -42,25 +44,36 @@ func (p *proxy) do(r *http.Request) (*http.Response, error) {
 	return p.handler.RoundTrip(r)
 }
 
-func (p *proxy) connect(r *http.Request) (net.Conn, error) {
-	if len(hosts) > 1 {
-		j := p.index % len(hosts)
-		p.index += 1
-		return p.dial("tcp", hosts[j])
+func (p *proxy) connect(r *http.Request) (io.ReadWriteCloser, error) {
+	tr, ok := p.handler.(*http2.Transport)
+	if ok {
+		return tr.Connect(r)
 	}
-	return p.dial("tcp", hosts[0])
+	return nil, errors.New("wrong http2.Transport")
 }
 
-func (p *proxy) dial(network string, addr string) (net.Conn, error) {
+func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error) {
 	name := addr
 	if server_name != "" {
 		name = server_name
 	}
+
 	c, err := util.Dial(network, addr)
 	if err != nil {
 		return nil, err
 	}
-	cc := tls.Client(c, &tls.Config{ServerName: name})
+
+	cfg.ServerName = name
+	cfg.InsecureSkipVerify = false
+
+	cc := tls.Client(c, cfg)
+
+	err = cc.Handshake()
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
 	return cc, nil
 }
 
@@ -82,17 +95,14 @@ func (p *proxy) getproxy(req *http.Request) (*url.URL, error) {
 	return u, nil
 }
 
-func forward(src, dst net.Conn) {
-	io.Copy(dst, src)
-	dst.Close()
-}
-
 func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		w.WriteHeader(503)
 		return
 	}
+
+	r.Header.Del("proxy-connection")
 
 	s, err := mhd.proxy.connect(r)
 	if err != nil {
@@ -101,6 +111,8 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(200)
+
 	c, _, err := hj.Hijack()
 	if err != nil {
 		log.Print(err)
@@ -108,12 +120,17 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.WriteProxy(s)
-	go forward(c, s)
-	forward(s, c)
+	go func() {
+		io.Copy(c, s)
+		c.Close()
+	}()
+
+	io.Copy(s, c)
+	s.Close()
 }
 
 func (mhd *myhandler) HandleHttp(w http.ResponseWriter, r *http.Request) {
+	r.Header.Del("proxy-connection")
 	resp, err := mhd.proxy.do(r)
 	if err != nil {
 		log.Print(err)
@@ -163,12 +180,12 @@ func main() {
 	if len(hosts) == 0 {
 		log.Fatal("you must special a server")
 	}
-
+	http2.VerboseLogs = false
 	log.Printf("Listening on :%d", port)
 	p := &proxy{}
-	p.handler = &http.Transport{
-		Dial:  p.dial,
-		Proxy: p.getproxy,
+	p.handler = &http2.Transport{
+		DialTLS: p.dialTLS,
+		Proxy:   p.getproxy,
 	}
 
 	err := http.ListenAndServe(Sprintf(":%d", port), &myhandler{proxy: p})

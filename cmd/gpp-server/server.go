@@ -22,7 +22,7 @@ import (
 	"flag"
 	. "fmt"
 	"github.com/fangdingjun/gpp"
-	"github.com/fangdingjun/http2"
+	"github.com/fangdingjun/net/http2"
 	"github.com/gorilla/mux"
 	"github.com/vharitonsky/iniflags"
 	"log"
