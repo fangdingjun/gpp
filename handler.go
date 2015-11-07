@@ -249,11 +249,11 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.ProtoMajor == 2 {
 		r.URL.Scheme = "http"
 		r.URL.Host = r.Host
-	}
 
-	if r.Method != "POST" && r.Method != "PUT" {
-		r.ContentLength = 0
-		r.Body = nil
+		if r.Method != "POST" && r.Method != "PUT" {
+			r.ContentLength = 0
+			r.Body = nil
+		}
 	}
 
 	if h.Transport != nil {

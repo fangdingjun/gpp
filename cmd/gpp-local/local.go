@@ -25,7 +25,7 @@ import (
 	"net/url"
 	//"strings"
 	"github.com/fangdingjun/gpp/util"
-	//"time"
+	"time"
 )
 
 var server_name string
@@ -175,6 +175,7 @@ func main() {
 	flag.StringVar(&server_name, "server_name", "", "the server name")
 	flag.Var(&hosts, "server", "the server connect to")
 
+	util.DialTimeout = 1 * time.Second
 	iniflags.Parse()
 
 	if len(hosts) == 0 {
