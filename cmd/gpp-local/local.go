@@ -25,6 +25,8 @@ import (
 	"net/url"
 	//"strings"
 	"github.com/fangdingjun/gpp/util"
+	"github.com/gorilla/handlers"
+	"os"
 	"time"
 )
 
@@ -188,8 +190,9 @@ func main() {
 		DialTLS: p.dialTLS,
 		Proxy:   p.getproxy,
 	}
-
-	err := http.ListenAndServe(Sprintf(":%d", port), &myhandler{proxy: p})
+	hdr := &myhandler{proxy: p}
+	err := http.ListenAndServe(Sprintf(":%d", port),
+		handlers.LoggingHandler(os.Stdout, hdr))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -28,6 +28,7 @@ import (
 	"log"
 	//"net"
 	"encoding/base64"
+	"github.com/gorilla/handlers"
 	"net/http"
 	"os"
 	"strings"
@@ -84,7 +85,7 @@ func main() {
 	logger = log.New(out, "", log.LstdFlags)
 
 	srv.Addr = Sprintf(":%d", port)
-	srv.Handler = &gpp.Handler{
+	hdr1 := &gpp.Handler{
 		Handler:       Router,
 		EnableProxy:   true,
 		LocalDomain:   local_domain,
@@ -93,11 +94,15 @@ func main() {
 		ProxyAuthFunc: proxy_auth_func,
 	}
 
+	srv.Handler = handlers.LoggingHandler(out, hdr1)
+
 	srv1.Addr = Sprintf(":%d", port1)
-	srv1.Handler = &gpp.Handler{
+	hdr2 := &gpp.Handler{
 		EnableProxy: false,
 		Logger:      logger,
 	}
+
+	srv1.Handler = handlers.LoggingHandler(out, hdr2)
 
 	if port1 != 0 {
 		go func() {

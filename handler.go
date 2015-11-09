@@ -143,7 +143,7 @@ If the h.Handler is not nil, will use h.Handler to handle the request.
 */
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if b := h.is_local_request(r); b {
-		h.LogReq(r, 0)
+		//h.LogReq(r, 0)
 		if h.Handler != nil {
 			/* invoke handler */
 			h.Handler.ServeHTTP(w, r)
@@ -159,7 +159,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		/* proxy not enabled */
 		w.WriteHeader(404)
 		w.Write([]byte("<h1>Not Found</h1>"))
-		h.LogReq(r, 404)
+		//h.LogReq(r, 404)
 		return
 	}
 
@@ -191,7 +191,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		h.Log("connection not support hijack\n")
 		w.WriteHeader(503)
-		h.LogReq(r, 503)
+		//h.LogReq(r, 503)
 		return
 	}
 
@@ -214,12 +214,12 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte(err.Error()))
 
-		h.LogReq(r, 503)
+		//h.LogReq(r, 503)
 		return
 	}
 
 	w.WriteHeader(200)
-	h.LogReq(r, 200)
+	//h.LogReq(r, 200)
 
 	client_conn, _, _ := hj.Hijack()
 
@@ -267,7 +267,7 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Log("proxy err: %s\n", err.Error())
 		w.WriteHeader(503)
-		h.LogReq(r, 503)
+		//h.LogReq(r, 503)
 		return
 	}
 
@@ -283,7 +283,7 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(resp.StatusCode)
 
-	h.LogReq(r, resp.StatusCode)
+	//h.LogReq(r, resp.StatusCode)
 
 	io.Copy(w, resp.Body)
 
