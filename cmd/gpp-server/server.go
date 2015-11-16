@@ -94,7 +94,7 @@ func main() {
 		ProxyAuthFunc: proxy_auth_func,
 	}
 
-	srv.Handler = handlers.LoggingHandler(out, hdr1)
+	srv.Handler = handlers.CombinedLoggingHandler(out, hdr1)
 
 	srv1.Addr = Sprintf(":%d", port1)
 	hdr2 := &gpp.Handler{
@@ -102,7 +102,7 @@ func main() {
 		Logger:      logger,
 	}
 
-	srv1.Handler = handlers.LoggingHandler(out, hdr2)
+	srv1.Handler = handlers.CombinedLoggingHandler(out, hdr2)
 
 	if port1 != 0 {
 		go func() {

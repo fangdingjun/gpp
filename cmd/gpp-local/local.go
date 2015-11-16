@@ -192,7 +192,7 @@ func main() {
 	}
 	hdr := &myhandler{proxy: p}
 	err := http.ListenAndServe(Sprintf(":%d", port),
-		handlers.LoggingHandler(os.Stdout, hdr))
+		handlers.CombinedLoggingHandler(os.Stdout, hdr))
 	if err != nil {
 		log.Fatal(err)
 	}
