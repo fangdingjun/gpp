@@ -48,6 +48,7 @@ func main() {
 	var local_domain string
 	var logger *log.Logger
 	var proxy_auth bool
+	var enable_proxy, enable_proxy_http11 bool
 	//var ssl_cert tls.Certificate
 	//var listener, listener1 net.Listener
 	//var err error
@@ -64,6 +65,8 @@ func main() {
 	flag.StringVar(&local_domain, "domain", "", "local domain name")
 	flag.StringVar(&proxy_user, "proxy_user", "", "proxy username")
 	flag.StringVar(&proxy_pass, "proxy_pass", "", "proxy password")
+	flag.BoolVar(&enable_proxy, "enable_proxy", false, "enable proxy support")
+	flag.BoolVar(&enable_proxy_http11, "enable_proxy_http11", false, "when proxy and http2 eanbled, enable proxy on http/1.1")
 	flag.BoolVar(&proxy_auth, "proxy_auth", false, "proxy need auth or not")
 	iniflags.Parse()
 
@@ -86,12 +89,13 @@ func main() {
 
 	srv.Addr = Sprintf(":%d", port)
 	hdr1 := &gpp.Handler{
-		Handler:       Router,
-		EnableProxy:   true,
-		LocalDomain:   local_domain,
-		Logger:        logger,
-		ProxyAuth:     proxy_auth,
-		ProxyAuthFunc: proxy_auth_func,
+		Handler:           Router,
+		EnableProxy:       enable_proxy,
+		EnableProxyHTTP11: enable_proxy_http11,
+		LocalDomain:       local_domain,
+		Logger:            logger,
+		ProxyAuth:         proxy_auth,
+		ProxyAuthFunc:     proxy_auth_func,
 	}
 
 	srv.Handler = handlers.CombinedLoggingHandler(out, hdr1)
