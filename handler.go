@@ -64,6 +64,10 @@ type Handler struct {
 	// enable proxy or not
 	EnableProxy bool
 
+	// when enable http2 support
+	// enable proxy on http/1.1 or not
+	EnableProxyHTTP11 bool
+
 	// the local domain name, only required when http2 enabled
 	LocalDomain string
 
@@ -84,41 +88,6 @@ type Handler struct {
 	   function ProxyAuthFunc return
 	*/
 	ProxyAuthFunc func(w http.ResponseWriter, r *http.Request) bool
-}
-
-/*
-Log the http request, if the h.Logger is nil, this function does nothing.
-
-r is the client request
-
-status is a http status code reply to client.
-
-The log format look like this
-    2015/09/09 15:21:41 59.44.39.234 "GET /proxy.pac HTTP/1.1" 200 "Mozilla/5.0 (compatible; MSIE 10.0; Win32; Trident/6.0)"
-*/
-func (h *Handler) LogReq(r *http.Request, status int) {
-	if h.Logger != nil {
-		ua := r.Header.Get("user-agent")
-		if ua == "" {
-			ua = "-"
-		}
-
-		uri := r.RequestURI
-
-		if r.ProtoMajor == 2 {
-			uri = r.URL.String()
-		}
-
-		if r.Method == "CONNECT" {
-			uri = r.URL.Host
-		}
-
-		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-
-		h.Logger.Printf("%s \"%s %s %s\" %03d \"%s\"\n",
-			ip, r.Method, uri, r.Proto, status, ua,
-		)
-	}
 }
 
 /*
@@ -143,7 +112,6 @@ If the h.Handler is not nil, will use h.Handler to handle the request.
 */
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if b := h.is_local_request(r); b {
-		//h.LogReq(r, 0)
 		if h.Handler != nil {
 			/* invoke handler */
 			h.Handler.ServeHTTP(w, r)
@@ -159,7 +127,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		/* proxy not enabled */
 		w.WriteHeader(404)
 		w.Write([]byte("<h1>Not Found</h1>"))
-		//h.LogReq(r, 404)
+		return
+	}
+
+	if r.ProtoMajor == 1 && !h.EnableProxyHTTP11 {
+		/* proxy on http/1.1 not enabled */
+		w.WriteHeader(404)
+		w.Write([]byte("<h1>Not Found</h1>"))
 		return
 	}
 
@@ -191,7 +165,6 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		h.Log("connection not support hijack\n")
 		w.WriteHeader(503)
-		//h.LogReq(r, 503)
 		return
 	}
 
@@ -214,12 +187,10 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte(err.Error()))
 
-		//h.LogReq(r, 503)
 		return
 	}
 
 	w.WriteHeader(200)
-	//h.LogReq(r, 200)
 
 	client_conn, _, _ := hj.Hijack()
 
@@ -249,6 +220,7 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.ProtoMajor == 2 {
 		r.URL.Scheme = "http"
 		r.URL.Host = r.Host
+		r.RequestURI = r.URL.String()
 
 		if r.Method != "POST" && r.Method != "PUT" {
 			r.ContentLength = 0
@@ -267,7 +239,6 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Log("proxy err: %s\n", err.Error())
 		w.WriteHeader(503)
-		//h.LogReq(r, 503)
 		return
 	}
 
@@ -283,14 +254,19 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(resp.StatusCode)
 
-	//h.LogReq(r, resp.StatusCode)
-
 	io.Copy(w, resp.Body)
 
 	resp.Body.Close()
 }
 
 func (h *Handler) is_local_request(r *http.Request) bool {
+
+	// not enable proxy
+	// all request trust as local request
+	if !h.EnableProxy {
+		return true
+	}
+
 	/* http/1.x */
 	if r.ProtoMajor == 1 {
 		if r.RequestURI[0] == '/' {
