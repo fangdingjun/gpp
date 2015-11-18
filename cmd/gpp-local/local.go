@@ -46,7 +46,7 @@ func (p *proxy) do(r *http.Request) (*http.Response, error) {
 	return p.handler.RoundTrip(r)
 }
 
-func (p *proxy) connect(r *http.Request) (io.ReadWriteCloser, error) {
+func (p *proxy) connect(r *http.Request) (*http2.ClientDataConn, error) {
 	tr, ok := p.handler.(*http2.Transport)
 	if ok {
 		return tr.Connect(r)
@@ -113,7 +113,7 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(s.Res.StatusCode)
 
 	c, _, err := hj.Hijack()
 	if err != nil {
