@@ -174,7 +174,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		srv = r.URL.Host
 	}
 
-	if strings.Index(srv, ":") == -1 {
+	if _, _, err := net.SplitHostPort(srv); err != nil {
 		/* no port specialed, set port to 443 */
 		srv = net.JoinHostPort(srv, "443")
 	}
@@ -260,6 +260,10 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) is_local_request(r *http.Request) bool {
+	// connect is always a proxy request
+	if r.Method == "CONNECT" {
+		return false
+	}
 
 	// not enable proxy
 	// all request trust as local request
@@ -272,19 +276,29 @@ func (h *Handler) is_local_request(r *http.Request) bool {
 		if r.RequestURI[0] == '/' {
 			return true
 		}
+		return false
 	}
 
 	/* http/2.x */
 	if r.ProtoMajor == 2 {
-		host := r.Host
-		if strings.Index(r.Host, ":") != -1 {
-			host, _, _ = net.SplitHostPort(r.Host)
-		}
-		if h.LocalDomain != "" &&
-			strings.HasSuffix(host, h.LocalDomain) {
+
+		// LocalDomain not set
+		// trust all as local request
+		if h.LocalDomain == "" {
 			return true
 		}
+
+		host, _, err := net.SplitHostPort(r.Host)
+		if err != nil {
+			host = r.Host
+		}
+
+		if strings.HasSuffix(host, h.LocalDomain) {
+			return true
+		}
+
+		return false
 	}
 
-	return false
+	return true
 }
