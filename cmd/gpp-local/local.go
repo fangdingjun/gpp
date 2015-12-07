@@ -156,6 +156,13 @@ func (mhd *myhandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		mhd.HandleConnect(w, r)
 		return
 	}
+
+	// local request
+	if r.RequestURI[0] == '/' {
+		http.DefaultServeMux.ServeHTTP(w, r)
+		return
+	}
+
 	mhd.HandleHttp(w, r)
 }
 
