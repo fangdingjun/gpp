@@ -24,10 +24,10 @@ import (
 	"net/http"
 	"net/url"
 	//"strings"
-	"github.com/fangdingjun/gpp/util"
+	//"github.com/fangdingjun/gpp/util"
 	"github.com/fangdingjun/handlers"
 	"os"
-	"time"
+	//"time"
 )
 
 var server_name string
@@ -60,7 +60,7 @@ func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error)
 		name = server_name
 	}
 
-	c, err := util.Dial(network, addr)
+	c, err := net.Dial(network, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -178,14 +178,18 @@ func (m *myargs) String() string {
 }
 
 var hosts myargs
+var docroot string
 
 func main() {
+
 	flag.IntVar(&port, "port", 8080, "the port listen to")
 	flag.StringVar(&server_name, "server_name", "", "the server name")
 	flag.Var(&hosts, "server", "the server connect to")
+	flag.StringVar(&docroot, "docroot", ".", "the local http www root")
 
-	util.DialTimeout = 1 * time.Second
 	iniflags.Parse()
+
+	init_routers()
 
 	if len(hosts) == 0 {
 		log.Fatal("you must special a server")
