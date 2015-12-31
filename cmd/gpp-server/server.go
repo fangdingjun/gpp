@@ -28,10 +28,12 @@ import (
 	"log"
 	//"net"
 	"encoding/base64"
+	"github.com/fangdingjun/gpp/util"
 	"github.com/fangdingjun/handlers"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 var Router *mux.Router
@@ -52,7 +54,7 @@ func main() {
 	//var ssl_cert tls.Certificate
 	//var listener, listener1 net.Listener
 	//var err error
-
+	util.DialTimeout = 2 * time.Second
 	http2.VerboseLogs = false
 	var srv, srv1 http.Server
 
