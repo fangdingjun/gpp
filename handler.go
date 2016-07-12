@@ -205,6 +205,9 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(200)
+	w.(http.Flusher).Flush()
+
 	/* HTTP/2.0 */
 	go func() {
 		io.Copy(serverConn, r.Body)
