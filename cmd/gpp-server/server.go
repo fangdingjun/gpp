@@ -20,9 +20,9 @@ package main
 import (
 	//"crypto/tls"
 	"flag"
-	. "fmt"
+	"fmt"
 	"github.com/fangdingjun/gpp"
-	"github.com/fangdingjun/net/http2"
+	// "github.com/fangdingjun/net/http2"
 	"github.com/gorilla/mux"
 	"github.com/vharitonsky/iniflags"
 	"log"
@@ -36,10 +36,11 @@ import (
 	"time"
 )
 
+// Router is a global router for http.Server
 var Router *mux.Router
 
 var docroot string
-var proxy_user, proxy_pass string
+var proxyUser, proxyPass string
 
 func main() {
 	var port int
@@ -47,15 +48,15 @@ func main() {
 	var key string
 	var logfile string
 	var port1 int
-	var local_domain string
+	var localDomain string
 	var logger *log.Logger
-	var proxy_auth bool
-	var enable_proxy, enable_proxy_http11 bool
+	var proxyAuth bool
+	var enableProxy, enableProxyHTTP11 bool
 	//var ssl_cert tls.Certificate
 	//var listener, listener1 net.Listener
 	//var err error
 	util.DialTimeout = 2 * time.Second
-	http2.VerboseLogs = false
+	//http2.VerboseLogs = false
 	var srv, srv1 http.Server
 
 	flag.IntVar(&port, "port", 8000, "the listening port")
@@ -64,19 +65,19 @@ func main() {
 	flag.StringVar(&key, "key", "", "the private key")
 	flag.StringVar(&docroot, "docroot", ".", "the www root directory")
 	flag.StringVar(&logfile, "logfile", "", "log file")
-	flag.StringVar(&local_domain, "domain", "", "local domain name")
-	flag.StringVar(&proxy_user, "proxy_user", "", "proxy username")
-	flag.StringVar(&proxy_pass, "proxy_pass", "", "proxy password")
-	flag.BoolVar(&enable_proxy, "enable_proxy", false, "enable proxy support")
-	flag.BoolVar(&enable_proxy_http11, "enable_proxy_http11", false, "when proxy and http2 eanbled, enable proxy on http/1.1")
-	flag.BoolVar(&proxy_auth, "proxy_auth", false, "proxy need auth or not")
+	flag.StringVar(&localDomain, "domain", "", "local domain name")
+	flag.StringVar(&proxyUser, "proxy_user", "", "proxy username")
+	flag.StringVar(&proxyPass, "proxy_pass", "", "proxy password")
+	flag.BoolVar(&enableProxy, "enable_proxy", false, "enable proxy support")
+	flag.BoolVar(&enableProxyHTTP11, "enable_proxy_http11", false, "when proxy and http2 eanbled, enable proxy on http/1.1")
+	flag.BoolVar(&proxyAuth, "proxy_auth", false, "proxy need auth or not")
 	iniflags.Parse()
 
 	Router = mux.NewRouter()
 
 	init_routers()
 
-	var out *os.File = os.Stdout
+	var out = os.Stdout
 
 	if logfile != "" {
 		out1, err := os.Create(logfile)
@@ -89,20 +90,20 @@ func main() {
 	log.SetOutput(out)
 	logger = log.New(out, "", log.LstdFlags)
 
-	srv.Addr = Sprintf(":%d", port)
+	srv.Addr = fmt.Sprintf(":%d", port)
 	hdr1 := &gpp.Handler{
 		Handler:           Router,
-		EnableProxy:       enable_proxy,
-		EnableProxyHTTP11: enable_proxy_http11,
-		LocalDomain:       local_domain,
+		EnableProxy:       enableProxy,
+		EnableProxyHTTP11: enableProxyHTTP11,
+		LocalDomain:       localDomain,
 		Logger:            logger,
-		ProxyAuth:         proxy_auth,
-		ProxyAuthFunc:     proxy_auth_func,
+		ProxyAuth:         proxyAuth,
+		ProxyAuthFunc:     proxyAuthFunc,
 	}
 
 	srv.Handler = handlers.CombinedLoggingHandler(out, hdr1)
 
-	srv1.Addr = Sprintf(":%d", port1)
+	srv1.Addr = fmt.Sprintf(":%d", port1)
 	hdr2 := &gpp.Handler{
 		EnableProxy: false,
 		Logger:      logger,
@@ -118,7 +119,7 @@ func main() {
 	}
 
 	if cert != "" && key != "" {
-		http2.ConfigureServer(&srv, nil)
+		//http2.ConfigureServer(&srv, nil)
 		logger.Printf("Listen on https://0.0.0.0:%d", port)
 		log.Fatal(srv.ListenAndServeTLS(cert, key))
 	} else {
@@ -127,36 +128,36 @@ func main() {
 	}
 }
 
-func proxy_auth_func(w http.ResponseWriter, r *http.Request) bool {
-	user, pass := get_basic_userpass(r)
+func proxyAuthFunc(w http.ResponseWriter, r *http.Request) bool {
+	user, pass := getBasicUserpass(r)
 	if user == "" && pass == "" {
-		auth_failed(w)
+		authFailed(w)
 		return false
 	}
 
-	if user == proxy_user && pass == proxy_pass {
+	if user == proxyUser && pass == proxyPass {
 		return true
 	}
 
-	auth_failed(w)
+	authFailed(w)
 	return false
 }
 
-func auth_failed(w http.ResponseWriter) {
+func authFailed(w http.ResponseWriter) {
 	w.Header().Add("Proxy-Authenticate", "Basic realm=\"xxxx.com\"")
 	w.WriteHeader(407)
 	w.Write([]byte("<h1>unauthenticate</h1>"))
 }
 
-func get_basic_userpass(r *http.Request) (string, string) {
-	proxy_header := r.Header.Get("Proxy-Authorization")
-	if proxy_header == "" {
+func getBasicUserpass(r *http.Request) (string, string) {
+	proxyHeader := r.Header.Get("Proxy-Authorization")
+	if proxyHeader == "" {
 		return "", ""
 	}
 
 	r.Header.Del("Proxy-Authorization")
 
-	ss := strings.Split(proxy_header, " ")
+	ss := strings.Split(proxyHeader, " ")
 	if len(ss) != 2 {
 		return "", ""
 	}
