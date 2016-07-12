@@ -13,16 +13,18 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
+	//"errors"
 	"flag"
-	. "fmt"
-	"github.com/fangdingjun/net/http2"
+	"fmt"
+	//"github.com/fangdingjun/net/http2"
 	"github.com/vharitonsky/iniflags"
+	"golang.org/x/net/http2"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
+	//"net/url"
 	//"strings"
 	//"github.com/fangdingjun/gpp/util"
 	"github.com/fangdingjun/handlers"
@@ -30,8 +32,8 @@ import (
 	//"time"
 )
 
-var server_name string
-var port int = 0
+var serverName string
+var port = 0
 
 type myhandler struct {
 	proxy *proxy
@@ -46,20 +48,12 @@ func (p *proxy) do(r *http.Request) (*http.Response, error) {
 	return p.handler.RoundTrip(r)
 }
 
-func (p *proxy) connect(r *http.Request) (*http2.ClientDataConn, error) {
-	tr, ok := p.handler.(*http2.Transport)
-	if ok {
-		return tr.Connect(r)
-	}
-	return nil, errors.New("wrong http2.Transport")
-}
-
 func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error) {
 	name := addr
-	if server_name != "" {
-		name = server_name
+	if serverName != "" {
+		name = serverName
 	}
-
+	addr = hosts[0]
 	c, err := net.Dial(network, addr)
 	if err != nil {
 		return nil, err
@@ -79,24 +73,6 @@ func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error)
 	return cc, nil
 }
 
-func (p *proxy) getproxy(req *http.Request) (*url.URL, error) {
-	var u *url.URL
-	if len(hosts) > 1 {
-		j := p.index % len(hosts)
-		p.index += 1
-		u = &url.URL{
-			Scheme: "http",
-			Host:   hosts[j],
-		}
-	} else {
-		u = &url.URL{
-			Scheme: "http",
-			Host:   hosts[0],
-		}
-	}
-	return u, nil
-}
-
 func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
@@ -106,14 +82,24 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 	r.Header.Del("proxy-connection")
 
-	s, err := mhd.proxy.connect(r)
+	pr, pw := io.Pipe()
+
+	defer pw.Close()
+
+	r.Body = ioutil.NopCloser(pr)
+	r.URL.Scheme = "https"
+	r.URL.Host = hosts[0]
+	r.ContentLength = -1
+	s, err := mhd.proxy.do(r)
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(503)
 		return
 	}
 
-	w.WriteHeader(s.Res.StatusCode)
+	defer s.Body.Close()
+
+	w.WriteHeader(s.StatusCode)
 
 	c, _, err := hj.Hijack()
 	if err != nil {
@@ -122,17 +108,17 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		io.Copy(c, s)
-		c.Close()
-	}()
+	defer c.Close()
 
-	io.Copy(s, c)
-	s.Close()
+	go io.Copy(c, s.Body)
+	io.Copy(pw, c)
+
 }
 
-func (mhd *myhandler) HandleHttp(w http.ResponseWriter, r *http.Request) {
+func (mhd *myhandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Del("proxy-connection")
+	r.URL.Scheme = "https"
+	r.URL.Host = hosts[0]
 	resp, err := mhd.proxy.do(r)
 	if err != nil {
 		log.Print(err)
@@ -163,7 +149,7 @@ func (mhd *myhandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mhd.HandleHttp(w, r)
+	mhd.HandleHTTP(w, r)
 }
 
 type myargs []string
@@ -183,7 +169,7 @@ var docroot string
 func main() {
 
 	flag.IntVar(&port, "port", 8080, "the port listen to")
-	flag.StringVar(&server_name, "server_name", "", "the server name")
+	flag.StringVar(&serverName, "server_name", "", "the server name")
 	flag.Var(&hosts, "server", "the server connect to")
 	flag.StringVar(&docroot, "docroot", ".", "the local http www root")
 
@@ -199,10 +185,9 @@ func main() {
 	p := &proxy{}
 	p.handler = &http2.Transport{
 		DialTLS: p.dialTLS,
-		Proxy:   p.getproxy,
 	}
 	hdr := &myhandler{proxy: p}
-	err := http.ListenAndServe(Sprintf(":%d", port),
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port),
 		handlers.CombinedLoggingHandler(os.Stdout, hdr))
 	if err != nil {
 		log.Fatal(err)
