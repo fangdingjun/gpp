@@ -1,5 +1,4 @@
-/*
-gpp is a http proxy handler, it can act as a proxy server and a http server.
+/*Package gpp is a http proxy handler, it can act as a proxy server and a http server.
 
 Use it as a normal http.Handler. it determines the proxy request and the local request automatically.
 
@@ -40,12 +39,11 @@ Run above example and use curl to test it.
 Run the follow command you will see a welcome message
     $ curl http://127.0.0.1:8080/
 Run the follow command to test proxy function
-    $ curl --proxy 127.0.0.1:8080 http://httpbin.org/ip
-
-*/
+    $ curl --proxy 127.0.0.1:8080 http://httpbin.org/ip */
 package gpp
 
 import (
+	"fmt"
 	"github.com/fangdingjun/gpp/util"
 	"io"
 	"log"
@@ -55,7 +53,7 @@ import (
 )
 
 /*
-This is proxy handler, you can use this as a http.Handler.
+Handler is proxy handler, you can use this as a http.Handler.
 */
 type Handler struct {
 	// the handler to process local path request
@@ -91,7 +89,7 @@ type Handler struct {
 }
 
 /*
-This is a shortcut for log.Printf, if h.Logger is nil this does nothing.
+Log a shortcut for log.Printf, if h.Logger is nil this does nothing.
 */
 func (h *Handler) Log(format string, args ...interface{}) {
 	if h.Logger != nil {
@@ -111,7 +109,7 @@ If the h.Handler is nil, the local page request will be routed to http.DefaultSe
 If the h.Handler is not nil, will use h.Handler to handle the request.
 */
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if b := h.is_local_request(r); b {
+	if b := h.isLocalRequest(r); b {
 		if h.Handler != nil {
 			/* invoke handler */
 			h.Handler.ServeHTTP(w, r)
@@ -157,17 +155,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.HandleHTTP(w, r)
 }
 
+type flushWriter struct {
+	w io.Writer
+}
+
+func (fw flushWriter) Write(p []byte) (n int, err error) {
+	n, err = fw.w.Write(p)
+	if f, ok := fw.w.(http.Flusher); ok {
+		f.Flush()
+	}
+	return
+}
+
 /*
-handle the CONNECT request
+HandleConnect handle the CONNECT request
 */
 func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		h.Log("connection not support hijack\n")
-		w.WriteHeader(503)
-		return
-	}
-
 	srv := r.RequestURI
 	if r.ProtoMajor == 2 {
 		/* http/2.0 */
@@ -179,7 +182,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		srv = net.JoinHostPort(srv, "443")
 	}
 
-	server_conn, err := util.Dial("tcp", srv)
+	serverConn, err := util.Dial("tcp", srv)
 	if err != nil {
 		h.Log("dial to server: %s\n", err.Error())
 
@@ -190,21 +193,28 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(200)
+	defer serverConn.Close()
+	if r.ProtoMajor == 1 {
+		/* HTTP/1.1 */
+		hj, _ := w.(http.Hijacker)
+		c, _, _ := hj.Hijack()
+		defer c.Close()
+		fmt.Fprintf(c, "HTTP/1.1 200 connection established\r\n\r\n")
+		go io.Copy(c, serverConn)
+		io.Copy(serverConn, c)
+		return
+	}
 
-	client_conn, _, _ := hj.Hijack()
-
+	/* HTTP/2.0 */
 	go func() {
-		io.Copy(server_conn, client_conn)
-		server_conn.Close()
+		io.Copy(serverConn, r.Body)
 	}()
 
-	io.Copy(client_conn, server_conn)
-	client_conn.Close()
+	io.Copy(flushWriter{w}, serverConn)
 }
 
 /*
-Handle the other http proxy request, like GET, POST, HEAD.
+HandleHTTP handle the other http proxy request, like GET, POST, HEAD.
 
 If h.Transport is nil, will use http.DefaultTransport to process the request.
 
@@ -259,7 +269,7 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	resp.Body.Close()
 }
 
-func (h *Handler) is_local_request(r *http.Request) bool {
+func (h *Handler) isLocalRequest(r *http.Request) bool {
 	// connect is always a proxy request
 	if r.Method == "CONNECT" {
 		return false
