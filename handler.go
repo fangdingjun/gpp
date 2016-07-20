@@ -67,7 +67,7 @@ type Handler struct {
 	EnableProxyHTTP11 bool
 
 	// the local domain name, only required when http2 enabled
-	LocalDomain string
+	LocalDomains []string
 
 	// the RoundTripper for http proxy
 	Transport http.RoundTripper
@@ -297,7 +297,7 @@ func (h *Handler) isLocalRequest(r *http.Request) bool {
 
 		// LocalDomain not set
 		// trust all as local request
-		if h.LocalDomain == "" {
+		if len(h.LocalDomains) == 0 {
 			return true
 		}
 
@@ -306,8 +306,10 @@ func (h *Handler) isLocalRequest(r *http.Request) bool {
 			host = r.Host
 		}
 
-		if strings.HasSuffix(host, h.LocalDomain) {
-			return true
+		for _, d := range h.LocalDomains {
+			if strings.HasSuffix(host, d) {
+				return true
+			}
 		}
 
 		return false
