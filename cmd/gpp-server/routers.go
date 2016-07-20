@@ -1,42 +1,68 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
+
 	"os"
-	"path/filepath"
-	"strings"
+	//"path/filepath"
+	//"strings"
 )
 
-var proxy = NewProxy("127.0.0.1:9090")
-
-func roothandler(w http.ResponseWriter, r *http.Request) {
-	fullpath := filepath.Clean(filepath.Join(docroot, r.URL.Path))
-	fullpath, _ = filepath.Abs(fullpath)
-
-	root, _ := filepath.Abs(docroot)
-	root = filepath.Clean(root)
-
-	/* local file not exists */
-	if _, err := os.Stat(fullpath); err != nil {
-		proxy.ProxyPass(w, r)
-		return
+func initRouters() {
+	for _, r := range cfg.Routes {
+		switch r.URLType {
+		case "file":
+			func(r URLRoute) {
+				http.HandleFunc(r.URLPrefix, func(w http.ResponseWriter, req *http.Request) {
+					http.ServeFile(w, req, r.Path)
+				})
+			}(r)
+		case "dir":
+			func(r URLRoute) {
+				http.Handle(r.URLPrefix, http.FileServer(http.Dir(r.DocRoot)))
+			}(r)
+		case "uwsgi":
+			func(r URLRoute) {
+				_u1, err := url.Parse(r.Path)
+				if err != nil {
+					fmt.Printf("invalid path: %s\n", r.Path)
+					os.Exit(-1)
+				}
+				_p := _u1.Path
+				switch _u1.Scheme {
+				case "unix":
+				case "tcp":
+					_p = _u1.Host
+				default:
+					fmt.Printf("invalid schemd: %s, only support unix, tcp", _u1.Scheme)
+					os.Exit(-1)
+				}
+				_u := NewUwsgi(_u1.Scheme, _p, r.URLPrefix)
+				http.Handle(r.URLPrefix, _u)
+			}(r)
+		case "fastcgi":
+			func(r URLRoute) {
+				_u1, err := url.Parse(r.Path)
+				if err != nil {
+					fmt.Printf("invalid path: %s\n", r.Path)
+					os.Exit(-1)
+				}
+				_p := _u1.Path
+				switch _u1.Scheme {
+				case "unix":
+				case "tcp":
+					_p = _u1.Host
+				default:
+					fmt.Printf("invalid schemd: %s, only support unix, tcp", _u1.Scheme)
+					os.Exit(-1)
+				}
+				_u, _ := NewFastCGI(_u1.Scheme, _p, r.DocRoot, r.URLPrefix)
+				http.Handle(r.URLPrefix, _u)
+			}(r)
+		default:
+			fmt.Printf("invalid type: %s\n", r.URLType)
+		}
 	}
-
-	/* file out of docroot, path may contains .. */
-	if b := strings.HasPrefix(fullpath, root); !b {
-		w.WriteHeader(404)
-		w.Write([]byte("<h1>Not Found</h1>"))
-		return
-	}
-
-	/* serve local file */
-	http.ServeFile(w, r, fullpath)
-}
-
-func init_routers() {
-
-	Router.PathPrefix("/").HandlerFunc(roothandler)
-
-	/* defaut router */
-	http.HandleFunc("/", roothandler)
 }
