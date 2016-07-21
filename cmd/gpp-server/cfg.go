@@ -11,7 +11,7 @@ type URLRoute struct {
 type ListenEntry struct {
 	Cert        string `json:"cert"`
 	Host        string `json:"host"`
-	EnableProxy bool   `json:"enableProxy"`
+	EnableProxy bool   `json:"enable_proxy"`
 	Key         string `json:"key"`
 	ProxyAuth   bool   `json:"proxy_auth"`
 	ProxyUser   string `json:"proxy_user"`
