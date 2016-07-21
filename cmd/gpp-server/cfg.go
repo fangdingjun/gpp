@@ -5,6 +5,7 @@ type URLRoute struct {
 	Path      string `json:"path"`
 	URLType   string `json:"type"`
 	DocRoot   string `json:"docroot"`
+	UseRegex  bool   `json:"use_regex"`
 }
 
 type ListenEntry struct {

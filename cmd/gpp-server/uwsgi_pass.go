@@ -92,8 +92,8 @@ func buildParams(req *http.Request, urlPrefix string) map[string][]string {
 	}
 
 	for k, v := range req.Header {
+		k = "HTTP_" + strings.ToUpper(strings.Replace(k, "-", "_", -1))
 		if _, ok := header[k]; ok == false {
-			k = "HTTP_" + strings.ToUpper(strings.Replace(k, "-", "_", -1))
 			header[k] = v
 		}
 	}

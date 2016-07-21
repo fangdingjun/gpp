@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/yookoala/gofast"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -39,6 +39,7 @@ func (f FastCGI) FastCGIPass(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := net.Dial(f.Network, f.Addr)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(502)
 		return
 	}
@@ -105,15 +106,23 @@ func (f FastCGI) FastCGIPass(w http.ResponseWriter, r *http.Request) {
 
 	req.Params["SERVER_PROTOCOL"] = r.Proto
 
+	for k, v := range r.Header {
+		k = "HTTP_" + strings.ToUpper(strings.Replace(k, "-", "_", -1))
+		if _, ok := req.Params[k]; ok == false {
+			req.Params[k] = strings.Join(v, ";")
+		}
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(502)
 		return
 	}
 
 	err = resp.WriteTo(w, os.Stderr)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	resp.Close()

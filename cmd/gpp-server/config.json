@@ -3,29 +3,33 @@
     "logfile":"",
     "url_routes": [
         {
-            "url_prefix": "/", 
-            "path": "", 
-            "type": "dir", 
-            "docroot": "/var/www/html"
-        }, 
+            "url_prefix": "\\.php$|\\.php/", 
+            "path": "unix:///run/php5-fpm.sock", 
+            "type": "fastcgi", 
+            "docroot": "/var/www/html",
+            "use_regex":true
+        },
         {
             "url_prefix": "/media/", 
             "path": "unix:///run/uwsgi/app/media/socket", 
             "type": "uwsgi", 
-            "docroot": "/"
+            "docroot": "/",
+            "use_regex":false
         }, 
         {
             "url_prefix": "/shop/", 
             "path": "unix:///run/uwsgi/app/shop/socket", 
             "type": "uwsgi", 
-            "docroot": "/"
+            "docroot": "/",
+            "use_regex":false
         }, 
         {
-            "url_prefix": "/p/", 
-            "path": "unix:///run/php5-fpm.sock", 
-            "type": "fastcgi", 
-            "docroot": "/var/www/html"
-        }
+            "url_prefix": "/", 
+            "path": "", 
+            "type": "dir", 
+            "docroot": "/var/www/html",
+            "use_regex":false
+        } 
     ], 
     "listen": [
         {
