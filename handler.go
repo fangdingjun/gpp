@@ -123,14 +123,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !h.EnableProxy {
 		/* proxy not enabled */
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("<h1>Not Found</h1>"))
 		return
 	}
 
 	if r.ProtoMajor == 1 && !h.EnableProxyHTTP11 {
 		/* proxy on http/1.1 not enabled */
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("<h1>Not Found</h1>"))
 		return
 	}
@@ -186,7 +186,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.Log("dial to server: %s\n", err.Error())
 
-		w.WriteHeader(503)
+		w.WriteHeader(http.StatusServiceUnavailable)
 
 		w.Write([]byte(err.Error()))
 
@@ -205,7 +205,7 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
 
 	/* HTTP/2.0 */
@@ -251,7 +251,7 @@ func (h *Handler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.Log("proxy err: %s\n", err.Error())
-		w.WriteHeader(503)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
