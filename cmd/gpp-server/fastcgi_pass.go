@@ -40,7 +40,7 @@ func (f FastCGI) FastCGIPass(w http.ResponseWriter, r *http.Request) {
 	conn, err := net.Dial(f.Network, f.Addr)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(502)
+		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
 
@@ -116,7 +116,7 @@ func (f FastCGI) FastCGIPass(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(502)
+		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
 
