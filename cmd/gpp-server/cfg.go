@@ -1,5 +1,6 @@
 package main
 
+// URLRoute present the single rule for url
 type URLRoute struct {
 	URLPrefix string `json:"url_prefix"`
 	Path      string `json:"path"`
@@ -8,6 +9,7 @@ type URLRoute struct {
 	UseRegex  bool   `json:"use_regex"`
 }
 
+// ListenEntry present a port listen to
 type ListenEntry struct {
 	Cert        string `json:"cert"`
 	Host        string `json:"host"`
@@ -18,6 +20,7 @@ type ListenEntry struct {
 	ProxyPasswd string `json:"proxy_passwd"`
 }
 
+// CFG is configure struct
 type CFG struct {
 	Routes       []URLRoute    `json:"url_routes"`
 	Host         []ListenEntry `json:"listen"`
