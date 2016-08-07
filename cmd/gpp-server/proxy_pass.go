@@ -9,16 +9,16 @@ import (
 	//"strings"
 )
 
-type Proxy struct {
+type proxy struct {
 	transport *http.Transport
 	addr      string
 	//prefix string
 }
 
-func NewProxy(addr string) *Proxy {
-	p := &Proxy{addr: addr}
+func newProxy(addr string) *proxy {
+	p := &proxy{addr: addr}
 	p.transport = &http.Transport{
-		Dial: p.Dial,
+		Dial: p.dial,
 	}
 	/*
 	   p.prefix = prefix
@@ -29,11 +29,11 @@ func NewProxy(addr string) *Proxy {
 	return p
 }
 
-func (p *Proxy) Dial(network string, addr string) (conn net.Conn, err error) {
+func (p *proxy) dial(network string, addr string) (conn net.Conn, err error) {
 	return net.Dial("tcp", p.addr)
 }
 
-func (p *Proxy) ProxyPass(w http.ResponseWriter, r *http.Request) {
+func (p *proxy) proxyPass(w http.ResponseWriter, r *http.Request) {
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
 	r.Header.Add("X-Forwarded-For", host)
 	//r.RequestURI = ""
@@ -43,7 +43,7 @@ func (p *Proxy) ProxyPass(w http.ResponseWriter, r *http.Request) {
 	resp, err := p.transport.RoundTrip(r)
 	if err != nil {
 		log.Print(err)
-		w.WriteHeader(502)
+		w.WriteHeader(http.StatusBadGateway)
 		w.Write([]byte("<h1>502 Bad Gateway</h1>"))
 		return
 	}
