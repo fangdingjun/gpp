@@ -6,14 +6,14 @@ import (
 )
 
 var (
-	/* dial timeout */
-	DialTimeout time.Duration = 0
+	// DialTimeout is timeout for dialing
+	DialTimeout time.Duration
 
-	/* default timeout, 300ms */
-	DefaultDialTimeout time.Duration = 300 * time.Millisecond
+	// DefaultDialTimeout is default timeout, 300ms
+	DefaultDialTimeout = 300 * time.Millisecond
 )
 
-func get_timeout() time.Duration {
+func getTimeout() time.Duration {
 	if DialTimeout != 0 {
 		return DialTimeout
 	}
@@ -21,7 +21,7 @@ func get_timeout() time.Duration {
 }
 
 /*
-Try to dial all the ip address one by one if addr is a domain name, util one is successed.
+Dial try to dial all the ip address one by one if addr is a domain name, util one is successed.
 
 
 
@@ -45,7 +45,7 @@ func Dial(network string, addr string) (net.Conn, error) {
 	ip = net.ParseIP(host)
 	if ip == nil {
 		/* domain name resolve */
-		ips, err = ResolveDns(host)
+		ips, err = ResolveDNS(host)
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +54,7 @@ func Dial(network string, addr string) (net.Conn, error) {
 	}
 
 	for _, ip = range ips {
-		conn, err = net.DialTimeout(network, net.JoinHostPort(ip.String(), port), get_timeout())
+		conn, err = net.DialTimeout(network, net.JoinHostPort(ip.String(), port), getTimeout())
 		if err == nil {
 			/* dial success, return */
 			return conn, nil

@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func ExampleResolveDns() {
-	res, err := ResolveDns("mail.google.com")
+func ExampleResolveDNS() {
+	res, err := ResolveDNS("mail.google.com")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,8 +79,8 @@ func TestResolveA(t *testing.T) {
 	}
 }
 
-func TestResolveDns(t *testing.T) {
-	res, err := ResolveDns("mail.google.com")
+func TestResolveDNS(t *testing.T) {
+	res, err := ResolveDNS("mail.google.com")
 	if err != nil {
 		t.Error(err)
 	}

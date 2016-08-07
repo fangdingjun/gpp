@@ -7,23 +7,23 @@ import (
 )
 
 var (
-	/* dns server to use */
-	DnsServer string
+	// DNSServer the dns server to use
+	DNSServer string
 
-	/* default dns server */
-	DefaultDnsServer = "8.8.8.8:53"
+	// DefaultDNSServer the default dns servers to use
+	DefaultDNSServer = "8.8.8.8:53"
 )
 
-func get_dns_server() string {
-	if DnsServer != "" {
-		return DnsServer
+func getDNSServer() string {
+	if DNSServer != "" {
+		return DNSServer
 	}
 
-	return DefaultDnsServer
+	return DefaultDNSServer
 }
 
 /*
-Return all the ipv6 and ipv4 address for the domain name.
+ResolveDNS return all the ipv6 and ipv4 address for the domain name.
 
 In the return list, ipv6 address is in front of ipv4 address.
 
@@ -32,7 +32,7 @@ if domain name resolve failed it will return an error.
 Instead of system dns utils, we use the pure go dns library from https://github.com/miekg/dns
 
 */
-func ResolveDns(d string) ([]net.IP, error) {
+func ResolveDNS(d string) ([]net.IP, error) {
 	var data []net.IP
 	res, err := ResolveAAAA(d)
 	if err == nil && len(res) > 0 {
@@ -49,7 +49,7 @@ func ResolveDns(d string) ([]net.IP, error) {
 }
 
 /*
-Return all the ipv4 address for the domain name.
+ResolveA return all the ipv4 address for the domain name.
 
 If domain name resolve failed or get an emppty ip list will return an error.
 
@@ -59,7 +59,7 @@ Instead of system dns utils, we use the pure go dns library from https://github.
 func ResolveA(d string) ([]net.IP, error) {
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(d), dns.TypeA)
-	m1, err := dns.Exchange(m, get_dns_server())
+	m1, err := dns.Exchange(m, getDNSServer())
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func ResolveA(d string) ([]net.IP, error) {
 }
 
 /*
-Return all the ipv6 address for the domain name.
+ResolveAAAA return all the ipv6 address for the domain name.
 
 If domain name resolve failed or get an emppty ip list will return an error.
 
@@ -87,7 +87,7 @@ Instead of system dns utils, we use the pure go dns library from https://github.
 func ResolveAAAA(d string) ([]net.IP, error) {
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(d), dns.TypeAAAA)
-	m1, err := dns.Exchange(m, get_dns_server())
+	m1, err := dns.Exchange(m, getDNSServer())
 	if err != nil {
 		return nil, err
 	}
