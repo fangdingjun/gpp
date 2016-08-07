@@ -29,7 +29,7 @@ import (
 	//"github.com/fangdingjun/gpp/util"
 	"github.com/fangdingjun/handlers"
 	"os"
-	//"time"
+	"time"
 )
 
 var serverName string
@@ -54,7 +54,7 @@ func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error)
 		name = serverName
 	}
 	addr = hosts[0]
-	c, err := net.Dial(network, addr)
+	c, err := net.DialTimeout(network, addr, 2*time.Second)
 	if err != nil {
 		return nil, err
 	}
