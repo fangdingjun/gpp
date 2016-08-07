@@ -4,6 +4,6 @@ import (
 	"net/http"
 )
 
-func init_routers() {
+func initRouters() {
 	http.Handle("/", http.FileServer(http.Dir(docroot)))
 }

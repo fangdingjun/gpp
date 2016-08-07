@@ -76,7 +76,7 @@ func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error)
 func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
-		w.WriteHeader(503)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
@@ -93,7 +93,7 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	s, err := mhd.proxy.do(r)
 	if err != nil {
 		log.Print(err)
-		w.WriteHeader(503)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
@@ -104,7 +104,7 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	c, _, err := hj.Hijack()
 	if err != nil {
 		log.Print(err)
-		w.WriteHeader(503)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
@@ -122,7 +122,7 @@ func (mhd *myhandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := mhd.proxy.do(r)
 	if err != nil {
 		log.Print(err)
-		w.WriteHeader(503)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
@@ -175,7 +175,7 @@ func main() {
 
 	iniflags.Parse()
 
-	init_routers()
+	initRouters()
 
 	if len(hosts) == 0 {
 		log.Fatal("you must special a server")
