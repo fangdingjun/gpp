@@ -28,6 +28,7 @@ import (
 	//"strings"
 	//"github.com/fangdingjun/gpp/util"
 	"github.com/fangdingjun/handlers"
+	_ "net/http/pprof"
 	"os"
 	"time"
 )
@@ -84,7 +85,7 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 	pr, pw := io.Pipe()
 
-	defer pw.Close()
+	defer pr.Close()
 
 	r.Body = ioutil.NopCloser(pr)
 	r.URL.Scheme = "https"
@@ -108,9 +109,11 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer c.Close()
+	go func() {
+		io.Copy(c, s.Body)
+		c.Close()
+	}()
 
-	go io.Copy(c, s.Body)
 	io.Copy(pw, c)
 
 }
