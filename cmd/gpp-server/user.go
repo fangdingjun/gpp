@@ -8,13 +8,20 @@ import (
 )
 
 func dropPrivilege() {
-	// go1.7 will add user.LookupGroup, can't use it now
+	// go1.7 will add user.LookupGroup
+	// now use ourself LookupGroup
 
-	// if cfg.Group != "" {
-	//	 g, err := user.LookupGroup(cfg.Group)
-	//	 gid, _:= strconv.Atoi(g.Gid)
-	//	 err = util.Setgid(gid)
-	// }
+	if cfg.Group != "" {
+		g := util.LookupGroup(cfg.Group)
+		if g != nil {
+			err := util.Setgid(g.Gid)
+			if err != nil {
+				log.Println(err)
+			}
+		} else {
+			log.Printf("group %s does not exists\n", cfg.Group)
+		}
+	}
 
 	if cfg.User != "" {
 		u, err := user.Lookup(cfg.User)
