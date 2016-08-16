@@ -21,21 +21,21 @@ func dropPrivilege() {
 	// go1.7 will add user.LookupGroup
 	// now use ourself LookupGroup
 	if cfg.Group != "" {
-		g := util.LookupGroup(cfg.Group)
-		if g != nil {
+		g, err := util.LookupGroup(cfg.Group)
+		if err == nil {
 			err := util.Setgid(g.Gid)
 			if err != nil {
 				log.Println(err)
 			}
 		} else {
-			log.Printf("group %s does not exists\n", cfg.Group)
+			log.Println(err)
 		}
 	}
 
 	if cfg.User != "" {
 		u, err := user.Lookup(cfg.User)
 		if err != nil {
-			log.Printf("user %s does not exists\n", cfg.User)
+			log.Println(err)
 			return
 		}
 		uid, _ := strconv.Atoi(u.Uid)

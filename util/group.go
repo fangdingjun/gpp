@@ -31,6 +31,7 @@ char * get_name_by_gid(int gid){
 import "C"
 
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -41,23 +42,29 @@ type Group struct {
 }
 
 // LookupGroupID return a Group by the group id
-func LookupGroupID(gid int) *Group {
-	name := C.get_name_by_gid(C.int(gid))
+func LookupGroupID(gid int) (*Group, error) {
+	name, err := C.get_name_by_gid(C.int(gid))
+	if err != nil {
+		return nil, err
+	}
 	n := C.GoString(name)
 	if n == "" {
-		return nil
+		return nil, fmt.Errorf("gid %d does not exists", gid)
 	}
-	return &Group{gid, n}
+	return &Group{gid, n}, nil
 }
 
 // LookupGroup return a Group by the group name
-func LookupGroup(name string) *Group {
+func LookupGroup(name string) (*Group, error) {
 	n := C.CString(name)
 	defer C.free(unsafe.Pointer(n))
-	gid := C.get_gid_by_name(n)
-	if int(gid) == -1 {
-		return nil
+	gid, err := C.get_gid_by_name(n)
+	if int(gid) == -1 || err != nil {
+		if err == nil {
+			return nil, fmt.Errorf("group %s does not exists", name)
+		}
+		return nil, err
 	}
 
-	return &Group{int(gid), name}
+	return &Group{int(gid), name}, nil
 }
