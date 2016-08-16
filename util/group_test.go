@@ -11,9 +11,9 @@ func TestLookupGroup(t *testing.T) {
 	}
 
 	for name, gid := range testData {
-		g := LookupGroup(name)
-		if g == nil {
-			t.Errorf("lookup group failed for: %s\n", name)
+		g, err := LookupGroup(name)
+		if err != nil {
+			t.Error(err)
 			continue
 		}
 		if g.Gid != gid {
@@ -28,9 +28,9 @@ func TestLookupGroupId(t *testing.T) {
 		1000: "dingjun",
 	}
 	for gid, name := range testData {
-		g := LookupGroupID(gid)
-		if g == nil {
-			t.Errorf("lookup group id failed for: %d\n", gid)
+		g, err := LookupGroupID(gid)
+		if err != nil {
+			t.Error(err)
 			continue
 		}
 		if g.Name != name {
