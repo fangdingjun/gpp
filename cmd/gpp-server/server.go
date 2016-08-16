@@ -76,6 +76,13 @@ func main() {
 
 	initRouters()
 	initListeners()
+
+	// make a delay to make sure socket create success before drop privilege
+	select {
+	case <-time.After(2 * time.Second):
+	}
+
 	dropPrivilege()
+
 	select {}
 }
