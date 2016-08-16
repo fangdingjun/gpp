@@ -5,12 +5,21 @@ import (
 	"log"
 	"os/user"
 	"strconv"
+	"syscall"
 )
 
 func dropPrivilege() {
+
+	uid := syscall.Getuid()
+
+	if uid != 0 {
+		// only root(uid=0) can call setuid
+		// not root, skip
+		return
+	}
+
 	// go1.7 will add user.LookupGroup
 	// now use ourself LookupGroup
-
 	if cfg.Group != "" {
 		g := util.LookupGroup(cfg.Group)
 		if g != nil {
