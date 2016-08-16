@@ -26,4 +26,6 @@ type CFG struct {
 	Host         []ListenEntry `json:"listen"`
 	LocalDomains []string      `json:"local_domains"`
 	LogFile      string        `json:"logfile"`
+	User         string        `json:"user"`
+	Group        string        `json:"group"`
 }

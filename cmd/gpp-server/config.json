@@ -1,6 +1,8 @@
 {
     "local_domains":["localhost","127.0.0.1"],
     "logfile":"",
+    "user":"nobody",
+    "group":"nogroup",
     "url_routes": [
         {
             "url_prefix": "\\.php$|\\.php/", 

@@ -76,5 +76,6 @@ func main() {
 
 	initRouters()
 	initListeners()
+	dropPrivilege()
 	select {}
 }
