@@ -1,48 +1,48 @@
-package main
+package util
 
 import (
-	"github.com/fangdingjun/gpp/util"
-	"log"
+	//"log"
 	"os/user"
 	"strconv"
 	"syscall"
 )
 
-func dropPrivilege() {
+// DropPrivilege drop privilege to username and group
+func DropPrivilege(username, group string) error {
 
 	uid := syscall.Getuid()
 
 	if uid != 0 {
 		// only root(uid=0) can call setuid
 		// not root, skip
-		return
+		return nil
 	}
 
 	// go1.7 will add user.LookupGroup
 	// now use ourself LookupGroup
-	if cfg.Group != "" {
-		g, err := util.LookupGroup(cfg.Group)
+	if group != "" {
+		g, err := LookupGroup(group)
 		if err == nil {
-			err := util.Setgid(g.Gid)
+			err := Setgid(g.Gid)
 			if err != nil {
-				log.Println(err)
+				return err
 			}
 		} else {
-			log.Println(err)
+			return err
 		}
 	}
 
-	if cfg.User != "" {
-		u, err := user.Lookup(cfg.User)
+	if username != "" {
+		u, err := user.Lookup(username)
 		if err != nil {
-			log.Println(err)
-			return
+			return err
 		}
 		uid, _ := strconv.Atoi(u.Uid)
-		err = util.Setuid(uid)
+		err = Setuid(uid)
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 
 	}
+	return nil
 }

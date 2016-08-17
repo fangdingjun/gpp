@@ -82,7 +82,10 @@ func main() {
 	case <-time.After(2 * time.Second):
 	}
 
-	dropPrivilege()
+	err = util.DropPrivilege(cfg.User, cfg.Group)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	select {}
 }
