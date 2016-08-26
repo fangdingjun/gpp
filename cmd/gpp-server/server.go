@@ -53,18 +53,11 @@ func main() {
 	flag.StringVar(&cfgFile, "config", "", "config file")
 	flag.Parse()
 
-	fp, err := os.Open(cfgFile)
+	buf, err := ioutil.ReadFile(cfgFile)
 	if err != nil {
-		fmt.Printf("open configure file failed: %s\n", err)
+		fmt.Printf("read configure file failed: %s\n", err.Error())
 		os.Exit(-1)
 	}
-	buf, err := ioutil.ReadAll(fp)
-	if err != nil {
-		fmt.Printf("read failed: %s\n", err)
-		fp.Close()
-		os.Exit(-1)
-	}
-	fp.Close()
 
 	err = json.Unmarshal(buf, &cfg)
 	if err != nil {

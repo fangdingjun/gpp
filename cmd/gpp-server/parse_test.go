@@ -10,17 +10,11 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	fp, err := os.Open("config.json")
-	if err != nil {
-		t.Fatalf("open failed: %s", err)
-	}
-
-	defer fp.Close()
 
 	var _cfg CFG
-	buf, err := ioutil.ReadAll(fp)
+	buf, err := ioutil.ReadFile("config.json")
 	if err != nil {
-		t.Errorf("read error: %s", err)
+		t.Fatalf("open config.json failed: %s", err.Error())
 	}
 
 	err = json.Unmarshal(buf, &_cfg)
