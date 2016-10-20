@@ -49,13 +49,34 @@ func (p *proxy) do(r *http.Request) (*http.Response, error) {
 	return p.handler.RoundTrip(r)
 }
 
+type conn struct {
+	net.Conn
+	timeout time.Duration
+}
+
+func (c *conn) Read(buf []byte) (n int, err error) {
+	err = c.Conn.SetReadDeadline(time.Now().Add(c.timeout))
+	if err != nil {
+		return
+	}
+	return c.Conn.Read(buf)
+}
+
+func (c *conn) Write(buf []byte) (n int, err error) {
+	err = c.Conn.SetWriteDeadline(time.Now().Add(c.timeout))
+	if err != nil {
+		return
+	}
+	return c.Conn.Write(buf)
+}
+
 func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error) {
 	name := addr
 	if serverName != "" {
 		name = serverName
 	}
 	addr = hosts[0]
-	c, err := net.DialTimeout(network, addr, 2*time.Second)
+	c, err := net.DialTimeout(network, addr, 3*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +84,7 @@ func (p *proxy) dialTLS(network, addr string, cfg *tls.Config) (net.Conn, error)
 	cfg.ServerName = name
 	cfg.InsecureSkipVerify = false
 
-	cc := tls.Client(c, cfg)
+	cc := tls.Client(&conn{c, 80 * time.Second}, cfg)
 
 	err = cc.Handshake()
 	if err != nil {
@@ -109,18 +130,28 @@ func (mhd *myhandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		io.Copy(c, s.Body)
-		c.Close()
-	}()
+	defer c.Close()
 
-	io.Copy(pw, c)
+	done := make(chan int)
 
+	go forward(c, s.Body, done)
+	go forward(pw, c, done)
+
+	<-done
+
+}
+
+func forward(dst io.Writer, src io.Reader, done chan int) {
+	io.Copy(dst, src)
+	select {
+	case done <- 1:
+	default:
+	}
 }
 
 func (mhd *myhandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Del("proxy-connection")
-	r.URL.Scheme = "https"
+	//r.URL.Scheme = "https"
 	r.URL.Host = hosts[0]
 	resp, err := mhd.proxy.do(r)
 	if err != nil {
@@ -187,7 +218,8 @@ func main() {
 	log.Printf("Listening on :%d", port)
 	p := &proxy{}
 	p.handler = &http2.Transport{
-		DialTLS: p.dialTLS,
+		DialTLS:   p.dialTLS,
+		AllowHTTP: true,
 	}
 	hdr := &myhandler{proxy: p}
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port),
