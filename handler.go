@@ -194,26 +194,45 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer serverConn.Close()
+
 	if r.ProtoMajor == 1 {
 		/* HTTP/1.1 */
 		hj, _ := w.(http.Hijacker)
 		c, _, _ := hj.Hijack()
+
 		defer c.Close()
+
 		fmt.Fprintf(c, "HTTP/1.1 200 connection established\r\n\r\n")
-		go io.Copy(c, serverConn)
-		io.Copy(serverConn, c)
+
+		done := make(chan int)
+
+		go forward(c, serverConn, done)
+		go forward(serverConn, c, done)
+
+		<-done
+
 		return
 	}
+
+	/* HTTP/2.0 */
 
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
 
-	/* HTTP/2.0 */
-	go func() {
-		io.Copy(serverConn, r.Body)
-	}()
+	done := make(chan int)
 
-	io.Copy(flushWriter{w}, serverConn)
+	go forward(serverConn, r.Body, done)
+	go forward(flushWriter{w}, serverConn, done)
+
+	<-done
+}
+
+func forward(dst io.Writer, src io.Reader, done chan int) {
+	io.Copy(dst, src)
+	select {
+	case done <- 1:
+	default:
+	}
 }
 
 /*
