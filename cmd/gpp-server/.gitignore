@@ -1,4 +1,4 @@
 *.log
 *.crt
 *.key
-gpp-server
+gpp-server*
